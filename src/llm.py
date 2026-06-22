@@ -58,7 +58,13 @@ def active_provider() -> str:
 
 
 def parse_json(text: str) -> dict | list:
-    """Strip markdown fences, sanitize control characters, then parse JSON."""
+    """
+    Robustly parse JSON from LLM output.
+
+    Groq/Llama has two common failure modes:
+    1. Wraps output in ```json ... ``` fences
+    2. Puts literal newlines/tabs inside JSON string values (invalid per spec)
+    """
     import re
     text = text.strip()
 
@@ -71,18 +77,56 @@ def parse_json(text: str) -> dict | list:
 
     text = text.strip()
 
-    # Groq/Llama sometimes embeds literal control characters inside JSON strings.
-    # Remove everything except tab, newline, carriage-return (valid JSON whitespace).
-    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Escape literal newlines/tabs that are inside JSON string values.
+    # Walk char-by-char tracking whether we're inside a string.
+    text = _escape_string_literals(text)
 
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Last resort: find the outermost { } block and try again
+        # Last resort: pull out the outermost { } block
         m = re.search(r"\{.*\}", text, re.DOTALL)
         if m:
             return json.loads(m.group(0))
         raise
+
+
+def _escape_string_literals(text: str) -> str:
+    """Replace bare newlines/tabs/control-chars inside JSON string values."""
+    result = []
+    in_string = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\\" and i + 1 < len(text):
+            # already-escaped sequence — pass both chars through unchanged
+            result.append(ch)
+            result.append(text[i + 1])
+            i += 2
+            continue
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+        elif in_string:
+            if ch == "\n":
+                result.append("\\n")
+            elif ch == "\r":
+                result.append("\\r")
+            elif ch == "\t":
+                result.append("\\t")
+            elif ord(ch) < 0x20:        # other control chars → drop
+                pass
+            else:
+                result.append(ch)
+        else:
+            result.append(ch)
+        i += 1
+    return "".join(result)
 
 
 # ── Providers ──────────────────────────────────────────────────────────────
