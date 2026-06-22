@@ -211,7 +211,15 @@
       <tbody>
         {% for v in videos %}
         <tr id="row-{{ v.id }}">
-          <td>{% if v.youtube_url %}<a href="{{ v.youtube_url }}" target="_blank">{{ (v.title or v.topic)[:45] }}</a>{% else %}{{ (v.title or v.topic)[:45] }}{% endif %}</td>
+          <td>
+            {% if v.youtube_url %}
+              <a href="{{ v.youtube_url }}" target="_blank">{{ (v.title or v.topic)[:40] }}</a>
+            {% elif v.status in ['scripted','thumbnailed','produced'] %}
+              <a href="/video/{{ v.id }}">{{ (v.title or v.topic)[:40] }} →</a>
+            {% else %}
+              {{ (v.title or v.topic)[:40] }}
+            {% endif %}
+          </td>
           <td><span class="badge badge-{{ v.status }}">{{ v.status }}</span></td>
           <td>{{ "{:,}".format(v.views) }}</td>
           <td>${{ "%.2f"|format(v.revenue_usd) }}</td>

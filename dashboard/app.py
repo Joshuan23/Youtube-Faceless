@@ -125,6 +125,36 @@ def api_videos():
     return jsonify(db.list_videos(status=status, limit=limit))
 
 
+@app.route("/video/<int:video_id>")
+def view_script(video_id):
+    video = db.get_video(video_id)
+    if not video:
+        return "Video not found", 404
+
+    # load script text and meta JSON
+    script_text, meta = "", {}
+    script_path = video.get("script_path") or ""
+    if script_path and Path(script_path).exists():
+        script_text = Path(script_path).read_text()
+
+    import json
+    meta_path = script_path.replace(".txt", "_meta.json") if script_path else ""
+    if meta_path and Path(meta_path).exists():
+        try:
+            meta = json.loads(Path(meta_path).read_text())
+        except Exception:
+            pass
+
+    seo   = meta.get("seo", {})
+    title = seo.get("recommended_title") or video.get("title") or video.get("topic")
+    desc  = seo.get("description", "")
+    tags  = seo.get("tags", [])
+
+    return render_template("script.html",
+        video=video, title=title, script=script_text,
+        description=desc, tags=tags, seo=seo)
+
+
 @app.route("/healthz")
 def healthz():
     return "ok"
