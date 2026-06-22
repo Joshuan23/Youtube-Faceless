@@ -89,8 +89,10 @@ class Pipeline:
             video_id = self._step_script(video_id, topic, niche)
             if not self.dry_run:
                 video_id = self._step_audio(video_id)
+                video_id = self._step_thumbnail(video_id)
                 video_id = self._step_video(video_id)
-            video_id = self._step_thumbnail(video_id)
+            else:
+                video_id = self._step_thumbnail(video_id)
             if not self.skip_upload and not self.dry_run:
                 video_id = self._step_upload(video_id)
         except Exception as e:
@@ -165,13 +167,37 @@ class Pipeline:
 
     def _step_video(self, video_id: int) -> int:
         logger.info("[3/5] Assembling video…")
+        import subprocess
         video = self.db.get_video(video_id)
         audio_path = video["audio_path"]
+        thumb_path = video.get("thumb_path") or ""
         slug = _slugify(video["title"] or video["topic"])
         video_dir = OUTPUT_ROOT / "videos"
         video_dir.mkdir(parents=True, exist_ok=True)
         output_path = str(video_dir / f"{slug}.mp4")
 
+        # Try ffmpeg first — no Python deps needed
+        try:
+            if thumb_path and Path(thumb_path).exists():
+                img_args = ["-loop", "1", "-i", thumb_path]
+            else:
+                img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=24"]
+            cmd = (
+                ["ffmpeg", "-y"]
+                + img_args
+                + ["-i", audio_path,
+                   "-c:v", "libx264", "-tune", "stillimage",
+                   "-c:a", "aac", "-b:a", "192k",
+                   "-pix_fmt", "yuv420p", "-shortest",
+                   output_path]
+            )
+            subprocess.run(cmd, check=True, capture_output=True)
+            self.db.update_video(video_id, video_path=output_path, status="produced")
+            return video_id
+        except Exception as e:
+            logger.warning("ffmpeg failed (%s), trying moviepy", e)
+
+        # Fallback to moviepy
         import json as _json
         scripts_dir = OUTPUT_ROOT / "scripts"
         meta_path = scripts_dir / f"{slug}_meta.json"
