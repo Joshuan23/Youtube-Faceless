@@ -1,0 +1,17 @@
+run = "python dashboard/app.py"
+entrypoint = "dashboard/app.py"
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-23_11"
+
+[env]
+PORT = "8080"
+
+[deployment]
+run = ["sh", "-c", "python dashboard/app.py"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 8080
+externalPort = 80
