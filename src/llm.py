@@ -58,14 +58,31 @@ def active_provider() -> str:
 
 
 def parse_json(text: str) -> dict | list:
-    """Strip markdown code fences and parse JSON."""
+    """Strip markdown fences, sanitize control characters, then parse JSON."""
+    import re
     text = text.strip()
-    if text.startswith("```"):
+
+    # strip code fences
+    if "```" in text:
         text = text.split("```")[1]
         if text.startswith("json"):
             text = text[4:]
         text = text.rsplit("```", 1)[0]
-    return json.loads(text.strip())
+
+    text = text.strip()
+
+    # Groq/Llama sometimes embeds literal control characters inside JSON strings.
+    # Remove everything except tab, newline, carriage-return (valid JSON whitespace).
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Last resort: find the outermost { } block and try again
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            return json.loads(m.group(0))
+        raise
 
 
 # ── Providers ──────────────────────────────────────────────────────────────
