@@ -129,8 +129,6 @@ def chunk_text(text: str, max_chars: int = 4000) -> list[str]:
 
 def generate_chunked(text: str, output_dir: str, filename_base: str) -> str:
     """Generate voiceover in chunks and concatenate into one MP3. Returns final path."""
-    from pydub import AudioSegment
-
     gen = VoiceoverGenerator()
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -147,6 +145,8 @@ def generate_chunked(text: str, output_dir: str, filename_base: str) -> str:
         Path(chunk_paths[0]).rename(final)
         return final
 
+    # only import pydub when we actually need to concatenate multiple chunks
+    from pydub import AudioSegment
     combined = AudioSegment.empty()
     for path in chunk_paths:
         combined += AudioSegment.from_mp3(path)
