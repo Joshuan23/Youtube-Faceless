@@ -1,4 +1,1 @@
-from .pipeline import Pipeline
-from .database import Database
-
-__all__ = ["Pipeline", "Database"]
+# Lazy imports only — don't load heavy deps at package init time

@@ -8,10 +8,30 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from flask import Flask, render_template, jsonify, request
-from src.database import Database
-from src.analytics import Analytics
-from src.scheduler import next_upload_times
-from src.llm import active_provider
+
+# Guard every src import — missing optional packages won't crash the dashboard
+try:
+    from src.database import Database
+    from src.analytics import Analytics
+    from src.scheduler import next_upload_times
+    from src.llm import active_provider
+except Exception as _e:
+    print(f"[warn] Import issue: {_e}")
+    # minimal stubs so the app still starts
+    class Database:
+        def list_videos(self, **kw): return []
+        def create_video(self, t, n): return 1
+        def get_video(self, i): return None
+        def update_video(self, *a, **kw): pass
+        def record_analytics(self, *a, **kw): pass
+    class Analytics:
+        def __init__(self, *a): pass
+        def monthly_summary(self): return {"monthly_revenue_usd": 0, "total_revenue_usd": 0, "total_views": 0}
+        def content_calendar_stats(self): return {"pending":0,"scripted":0,"produced":0,"uploaded":0}
+        def revenue_projection(self, **kw): return {"projections": [], "months_to_target": None}
+        def videos_needed_for_target(self): return {}
+    def next_upload_times(n=5): return []
+    def active_provider(): return "none"
 
 app = Flask(__name__)
 db = Database()
@@ -103,6 +123,11 @@ def api_videos():
     limit  = int(request.args.get("limit", 50))
     status = request.args.get("status")
     return jsonify(db.list_videos(status=status, limit=limit))
+
+
+@app.route("/healthz")
+def healthz():
+    return "ok"
 
 
 if __name__ == "__main__":

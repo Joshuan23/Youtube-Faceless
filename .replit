@@ -1,5 +1,5 @@
-run = "python dashboard/app.py"
-entrypoint = "dashboard/app.py"
+run = "bash run.sh"
+entrypoint = "run.sh"
 modules = ["python-3.11"]
 
 [nix]
