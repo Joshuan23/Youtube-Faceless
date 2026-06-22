@@ -1,0 +1,41 @@
+# Core AI
+anthropic>=0.30.0
+openai>=1.35.0
+
+# Text-to-Speech
+elevenlabs>=1.0.0
+gtts>=2.5.0
+pyttsx3>=2.90
+
+# Video / Audio
+moviepy>=1.0.3
+imageio[ffmpeg]>=2.34.0
+pydub>=0.25.1
+
+# Image / Thumbnails
+Pillow>=10.3.0
+requests>=2.32.0
+
+# YouTube API
+google-api-python-client>=2.134.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+
+# Scheduling
+APScheduler>=3.10.4
+schedule>=1.2.2
+
+# Web Dashboard
+Flask>=3.0.3
+Flask-SQLAlchemy>=3.1.1
+
+# Data
+SQLAlchemy>=2.0.30
+pytrends>=4.9.2
+
+# Config / Utils
+python-dotenv>=1.0.1
+PyYAML>=6.0.1
+click>=8.1.7
+rich>=13.7.1
+tqdm>=4.66.4

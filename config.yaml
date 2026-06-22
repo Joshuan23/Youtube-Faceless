@@ -1,0 +1,94 @@
+channel:
+  name: "WealthFlow"
+  niche: "personal_finance"       # personal_finance | ai_tech | business | health
+  target_monthly_revenue: 10000   # USD
+  upload_time: "15:00"            # 3 PM local — peak YouTube traffic window
+  videos_per_week: 5
+
+niches:
+  personal_finance:
+    avg_cpm: 18.0                 # USD per 1000 views
+    target_views_per_video: 50000
+    optimal_video_length_min: 12  # minutes  (enables mid-roll ads)
+    topics:
+      - "how to save money"
+      - "investing for beginners"
+      - "passive income ideas"
+      - "credit score tips"
+      - "budgeting strategies"
+      - "stock market basics"
+      - "real estate investing"
+      - "side hustles"
+      - "financial freedom"
+      - "debt payoff strategies"
+
+  ai_tech:
+    avg_cpm: 12.0
+    target_views_per_video: 70000
+    optimal_video_length_min: 10
+    topics:
+      - "AI tools that will blow your mind"
+      - "ChatGPT prompts"
+      - "make money with AI"
+      - "future of AI"
+      - "AI vs humans"
+      - "best AI apps 2025"
+
+  business:
+    avg_cpm: 15.0
+    target_views_per_video: 55000
+    optimal_video_length_min: 12
+    topics:
+      - "how to start a business"
+      - "entrepreneur success stories"
+      - "business mistakes to avoid"
+      - "scaling your business"
+      - "online business ideas"
+
+  health:
+    avg_cpm: 9.0
+    target_views_per_video: 80000
+    optimal_video_length_min: 10
+    topics:
+      - "morning routine habits"
+      - "longevity secrets"
+      - "mental health tips"
+      - "best exercises"
+      - "nutrition myths"
+
+video:
+  resolution: "1920x1080"
+  fps: 30
+  background_color: "#0A0A0A"
+  text_color: "#FFFFFF"
+  accent_color: "#FFD700"
+  font_size_title: 72
+  font_size_body: 48
+  fade_duration: 0.5            # seconds
+  background_music_volume: 0.08
+
+thumbnail:
+  width: 1280
+  height: 720
+  background_color: "#0D1117"
+  title_color: "#FFD700"
+  subtitle_color: "#FFFFFF"
+  border_color: "#FFD700"
+  border_width: 8
+
+seo:
+  title_max_chars: 70
+  description_min_chars: 400
+  max_tags: 15
+  chapters: true
+
+tts:
+  provider: "elevenlabs"         # elevenlabs | openai | gtts
+  speed: 1.0
+  elevenlabs:
+    model: "eleven_turbo_v2_5"
+    stability: 0.5
+    similarity_boost: 0.8
+  openai:
+    model: "tts-1-hd"
+    voice: "onyx"

@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+env/
+
+# Env
+.env
+*.env
+
+# Output (large files)
+output/audio/
+output/videos/
+output/broll/
+output/pipeline.log
+
+# Credentials
+credentials/token.pickle
+credentials/token.json
+
+# Thumbnails & scripts are OK to keep
+!output/scripts/
+!output/thumbnails/
+
+# DB (local data)
+output/channel.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
