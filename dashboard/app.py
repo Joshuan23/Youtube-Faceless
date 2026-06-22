@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file, abort
 
 # Guard every src import — missing optional packages won't crash the dashboard
 try:
@@ -153,6 +153,25 @@ def view_script(video_id):
     return render_template("script.html",
         video=video, title=title, script=script_text,
         description=desc, tags=tags, seo=seo)
+
+
+@app.route("/download/<int:video_id>/<file_type>")
+def download_file(video_id, file_type):
+    video = db.get_video(video_id)
+    if not video:
+        abort(404)
+
+    path_map = {
+        "video":     video.get("video_path"),
+        "audio":     video.get("audio_path"),
+        "thumbnail": video.get("thumb_path"),
+        "script":    video.get("script_path"),
+    }
+    file_path = path_map.get(file_type)
+    if not file_path or not Path(file_path).exists():
+        abort(404)
+
+    return send_file(file_path, as_attachment=True)
 
 
 @app.route("/healthz")

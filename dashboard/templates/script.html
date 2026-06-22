@@ -120,6 +120,22 @@
   </div>
   {% endif %}
 
+  <!-- Downloads -->
+  {% if video.video_path or video.audio_path or video.thumb_path %}
+  <div class="section">
+    <div class="section-label">Download Files</div>
+    {% if video.video_path %}
+    <a href="/download/{{ video.id }}/video" class="copy-btn" style="text-decoration:none;display:flex;justify-content:center">⬇ Download Video (MP4)</a>
+    {% endif %}
+    {% if video.audio_path %}
+    <a href="/download/{{ video.id }}/audio" class="copy-btn secondary" style="text-decoration:none;display:flex;justify-content:center;margin-top:8px">⬇ Download Voiceover (MP3)</a>
+    {% endif %}
+    {% if video.thumb_path %}
+    <a href="/download/{{ video.id }}/thumbnail" class="copy-btn secondary" style="text-decoration:none;display:flex;justify-content:center;margin-top:8px">⬇ Download Thumbnail (JPG)</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
 </main>
 
 <script>
