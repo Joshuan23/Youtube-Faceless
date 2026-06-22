@@ -29,12 +29,19 @@ TOPIC  = ""                   # leave blank to auto-pick a trending topic
 
 
 def check_keys():
-    key = os.getenv("ANTHROPIC_API_KEY", "")
-    if not key or key.startswith("sk-ant-..."):
-        print("\n❌  ANTHROPIC_API_KEY not set in .env")
-        print("   → Get a free key at https://console.anthropic.com")
-        print("   → Add it to your .env file")
+    from src.llm import active_provider
+    provider = active_provider()
+    if provider == "none":
+        print("\n❌  No LLM API key found in .env")
+        print()
+        print("   FREE option (no credit card):")
+        print("   1. Go to https://console.groq.com")
+        print("   2. Sign up → Create API Key")
+        print("   3. Add to .env:  GROQ_API_KEY=gsk_xxxx")
+        print()
+        print("   Also free: GEMINI_API_KEY from https://aistudio.google.com/apikey")
         sys.exit(1)
+    print(f"  LLM provider: {provider}")
 
 
 def step1_pick_topic():
@@ -116,15 +123,12 @@ def step3_make_voiceover(script_path: str = None):
     text = Path(script_path).read_text()
     print(f"  Script length: {len(text):,} characters")
 
-    has_el  = bool(os.getenv("ELEVENLABS_API_KEY"))
-    has_oai = bool(os.getenv("OPENAI_API_KEY"))
-    provider = "ElevenLabs" if has_el else ("OpenAI TTS" if has_oai else "gTTS (free)")
-    print(f"  TTS provider: {provider}")
-
-    if not has_el and not has_oai:
-        print("\n  ⚠  Using gTTS (free but robotic voice).")
-        print("     For natural voice, add ELEVENLABS_API_KEY to .env")
-        print("     Free tier at https://elevenlabs.io (10k chars/month)")
+    from src.voiceover import VoiceoverGenerator
+    tts_provider = VoiceoverGenerator()._detect_provider()
+    print(f"  TTS provider: {tts_provider}")
+    if tts_provider == "gtts":
+        print("\n  ⚠  Using gTTS (robotic quality).")
+        print("     For free natural voice: pip install edge-tts")
 
     import re
     title = _load_state("title") or "video"

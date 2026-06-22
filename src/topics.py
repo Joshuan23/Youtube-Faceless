@@ -1,13 +1,11 @@
 """Trending topic discovery for each niche."""
 
-import os
-import json
 import random
 import logging
 from datetime import datetime
 
-import anthropic
 import yaml
+from .llm import chat, parse_json, active_provider
 
 logger = logging.getLogger(__name__)
 
@@ -100,38 +98,25 @@ def get_trending_topics(niche: str, count: int = 5) -> list[str]:
 
 
 def _claude_topic_ideas(niche: str, count: int) -> list[str]:
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    if not api_key:
+    if active_provider() == "none":
         return []
     try:
-        client = anthropic.Anthropic(api_key=api_key)
         today = datetime.utcnow().strftime("%B %Y")
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
+        raw = chat(
+            "You are a YouTube growth strategist. Return only valid JSON.",
+            (
+                f"Today is {today}.\n\n"
+                f"Generate {count} high-potential YouTube video topic ideas for the '{niche}' niche.\n"
+                "Requirements:\n"
+                "- Each topic must be a punchy, searchable title under 70 characters\n"
+                "- Mix evergreen + trending angles\n"
+                "- Focus on high click-through-rate hooks\n"
+                "- Include numbers where natural (e.g. '7 ways...')\n\n"
+                "Return ONLY a JSON array of strings, no explanation."
+            ),
             max_tokens=512,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"You are a YouTube strategist. Today is {today}.\n\n"
-                        f"Generate {count} high-potential YouTube video topic ideas for the '{niche}' niche.\n"
-                        "Requirements:\n"
-                        "- Each topic must be a punchy, searchable title under 70 characters\n"
-                        "- Mix evergreen + trending angles\n"
-                        "- Focus on high click-through-rate hooks\n"
-                        "- Include numbers where natural (e.g. '7 ways...')\n\n"
-                        "Return ONLY a JSON array of strings, no explanation."
-                    ),
-                }
-            ],
         )
-        raw = message.content[0].text.strip()
-        # Handle markdown code blocks
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        return json.loads(raw)
+        return parse_json(raw)
     except Exception as e:
-        logger.warning("Claude topic generation failed: %s", e)
+        logger.warning("LLM topic generation failed: %s", e)
         return []

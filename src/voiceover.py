@@ -1,13 +1,17 @@
 """Text-to-speech voiceover generation.
 
-Priority: ElevenLabs → OpenAI TTS → gTTS
+Priority: ElevenLabs → edge-tts (free, natural) → OpenAI TTS → gTTS
+edge-tts uses Microsoft Edge voices — natural quality, completely free, no key needed.
 """
 
 import os
+import asyncio
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+EDGE_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-GuyNeural")   # change in .env
 
 
 class VoiceoverGenerator:
@@ -18,6 +22,11 @@ class VoiceoverGenerator:
     def _detect_provider(self) -> str:
         if os.getenv("ELEVENLABS_API_KEY"):
             return "elevenlabs"
+        try:
+            import edge_tts  # noqa: F401
+            return "edge_tts"
+        except ImportError:
+            pass
         if os.getenv("OPENAI_API_KEY"):
             return "openai"
         return "gtts"
@@ -27,9 +36,24 @@ class VoiceoverGenerator:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         if self.provider == "elevenlabs":
             return self._elevenlabs(text, output_path)
+        if self.provider == "edge_tts":
+            return self._edge_tts(text, output_path)
         if self.provider == "openai":
             return self._openai(text, output_path)
         return self._gtts(text, output_path)
+
+    # ── edge-tts (free, natural voices) ─────────────────────────────────
+
+    def _edge_tts(self, text: str, output_path: str) -> str:
+        import edge_tts
+
+        async def _run():
+            communicate = edge_tts.Communicate(text, EDGE_VOICE)
+            await communicate.save(output_path)
+
+        asyncio.run(_run())
+        logger.info("edge-tts audio saved: %s", output_path)
+        return output_path
 
     # ── ElevenLabs ───────────────────────────────────────────────────────
 

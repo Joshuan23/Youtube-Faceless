@@ -1,12 +1,11 @@
-"""Claude-powered YouTube script generator."""
+"""YouTube script generator — works with Groq (free), Gemini (free), or Claude."""
 
-import os
 import json
 import logging
 from pathlib import Path
 
-import anthropic
 import yaml
+from .llm import chat, parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -115,10 +114,6 @@ SECTION_TEMPLATES: dict[str, list[str]] = {
 class ScriptGenerator:
     def __init__(self):
         self.config = _load_config()
-        api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            raise EnvironmentError("ANTHROPIC_API_KEY not set")
-        self.client = anthropic.Anthropic(api_key=api_key)
 
     def generate(self, topic: str, niche: str) -> dict:
         """Generate a full script for a given topic and niche."""
@@ -141,20 +136,8 @@ class ScriptGenerator:
         )
 
         logger.info("Generating script for: %s", topic)
-        message = self.client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = message.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.rsplit("```", 1)[0]
-
-        script_data = json.loads(raw)
+        raw = chat(SYSTEM_PROMPT, prompt, max_tokens=4096)
+        script_data = parse_json(raw)
         script_data["topic"] = topic
         script_data["niche"] = niche
         return script_data

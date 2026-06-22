@@ -1,11 +1,9 @@
 """SEO metadata generator: titles, descriptions, tags, chapters."""
 
-import os
 import json
 import logging
-from pathlib import Path
 
-import anthropic
+from .llm import chat, parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +19,6 @@ Always prioritize click-through rate and search ranking simultaneously.
 
 
 class SEOOptimizer:
-    def __init__(self):
-        api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            raise EnvironmentError("ANTHROPIC_API_KEY not set")
-        self.client = anthropic.Anthropic(api_key=api_key)
-
     def generate(self, script_data: dict) -> dict:
         """
         Given a script dict (with title, sections, key_takeaways, niche, topic),
@@ -68,19 +60,8 @@ Return a JSON object:
   "hashtags": ["#Finance", ...]
 }}
 """
-        message = self.client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2048,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = message.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.rsplit("```", 1)[0]
-        seo = json.loads(raw)
+        raw = chat(SYSTEM_PROMPT, prompt, max_tokens=2048)
+        seo = parse_json(raw)
         logger.info("SEO generated for: %s", seo.get("recommended_title"))
         return seo
 

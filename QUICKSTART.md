@@ -1,12 +1,11 @@
 # Quickstart – Faceless YouTube Channel
 
-Follow these 6 steps in order. Each one takes 5 minutes or less.
+**Completely free stack:** Groq (scripts) + edge-tts (voice) + MoviePy (video) + Pexels (footage)
 
 ---
 
-## Before You Start
+## Setup (one time)
 
-Install Python 3.10+ and ffmpeg, then run:
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
@@ -14,159 +13,151 @@ cp .env.example .env
 
 ---
 
-## Step 1 – Get your Claude API key (free $5 credit)
+## Step 1 – Get a free Groq API key (2 minutes, no credit card)
 
-1. Go to **https://console.anthropic.com**
-2. Sign up → click "Get API Keys" → Create key
+1. Go to **https://console.groq.com**
+2. Sign up → click "Create API Key"
 3. Open `.env` and paste it:
    ```
-   ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+   GROQ_API_KEY=gsk_xxxxxxxxxxxx
    ```
 
-Test it works:
+Test it:
 ```bash
 python start.py step1
 ```
 You'll see 10 topic ideas. Done.
 
+> **Alternative:** Google Gemini is also free.
+> Get a key at https://aistudio.google.com/apikey → add `GEMINI_API_KEY=...` to `.env`
+
 ---
 
-## Step 2 – Write a script
+## Step 2 – Write a script (free)
 
 ```bash
 python start.py step2
 ```
 
-Claude writes a full 12-minute script + SEO title/tags.
-Output saved to `output/scripts/`.
+Groq (Llama 3.3 70B) writes a full 12-minute script + SEO metadata. Takes ~15 seconds.
 
-To use your own topic, edit `start.py` line 22:
+To use your own topic, edit line 22 in `start.py`:
 ```python
 TOPIC = "7 passive income ideas that actually work"
 ```
 
 ---
 
-## Step 3 – Make the voiceover
+## Step 3 – Make the voiceover (free)
 
-**Free option (robotic voice):** just run it — gTTS is the fallback.
+edge-tts uses Microsoft's neural voices — natural quality, completely free.
+
 ```bash
 python start.py step3
 ```
 
-**Better voice (natural, free tier):**
-1. Sign up at **https://elevenlabs.io** (free = 10k chars/month)
-2. Get API key from Profile → API Keys
-3. Add to `.env`:
-   ```
-   ELEVENLABS_API_KEY=xxxxxxxxxxxxxxxx
-   ```
+To change the voice, edit `.env`:
+```
+EDGE_TTS_VOICE=en-US-GuyNeural      # male
+# EDGE_TTS_VOICE=en-US-JennyNeural  # female
+# EDGE_TTS_VOICE=en-GB-RyanNeural   # British male
+```
 
-Output saved to `output/audio/`.
+> Want even better voice quality? Add `ELEVENLABS_API_KEY` to `.env`.
+> Free tier at https://elevenlabs.io (10k chars/month).
 
 ---
 
-## Step 4 – Build the video
+## Step 4 – Build the video (free, needs ffmpeg)
 
-Requires **ffmpeg** on your system:
-- Mac: `brew install ffmpeg`
-- Ubuntu: `sudo apt install ffmpeg`
-- Windows: download from https://ffmpeg.org
+Install ffmpeg first:
+- **Mac:** `brew install ffmpeg`
+- **Ubuntu:** `sudo apt install ffmpeg`
+- **Windows:** download from https://ffmpeg.org
 
 ```bash
 python start.py step4
 ```
 
-Takes 1–3 minutes. Output saved to `output/videos/`.
+Takes 1–3 minutes. Saves to `output/videos/`.
 
-**Want better visuals?**  
-Add free stock footage:
-1. Get a free key at **https://www.pexels.com/api**
-2. Add to `.env`: `PEXELS_API_KEY=xxxxxxxx`
+Want real stock footage? Get a free Pexels key at https://www.pexels.com/api and add `PEXELS_API_KEY=...` to `.env`.
 
 ---
 
-## Step 5 – Create thumbnail
+## Step 5 – Create thumbnail (free)
 
 ```bash
 python start.py step5
 ```
 
-Generates 3 thumbnail variants in `output/thumbnails/`.
-Open them and pick the best looking one.
+Generates 3 thumbnail variants in `output/thumbnails/`. Open them and pick the best.
 
 ---
 
-## Step 6 – Upload to YouTube
+## Step 6 – Upload to YouTube (free API)
 
-**First-time setup (one time only):**
+**One-time YouTube setup:**
 1. Go to **https://console.cloud.google.com**
-2. Create a new project
-3. Search "YouTube Data API v3" → Enable it
-4. Go to Credentials → Create → OAuth 2.0 Client ID → Desktop App
-5. Download the JSON → save as `credentials/client_secrets.json`
+2. New project → search "YouTube Data API v3" → Enable
+3. Credentials → Create → OAuth 2.0 → Desktop App → Download JSON
+4. Save as `credentials/client_secrets.json`
 
 ```bash
 python start.py step6
 ```
 
-First run opens your browser to authorize. After that it's automatic.
+First run opens your browser to authorize. After that it's fully automatic.
 
 ---
 
 ## Run everything at once
 
-Once all keys are set up:
 ```bash
 python start.py all
 ```
 
 ---
 
-## Automate daily posting
+## Auto-post daily (free)
 
 ```bash
 python main.py schedule
 ```
 
-Runs every day at 3 PM UTC, picks a trending topic, and posts automatically.
+Picks a new trending topic and posts every day at 3 PM UTC.
 
 ---
 
-## Watch your revenue
+## Revenue dashboard (free)
 
 ```bash
 python main.py dashboard
+# → http://localhost:5000
 ```
-
-Open **http://localhost:5000** to see your revenue dashboard and $10k projection.
 
 ---
 
-## Cost breakdown
+## Total cost: $0
 
-| Tool | Cost | Notes |
-|------|------|-------|
-| Claude API | ~$0.10/video | Script + SEO generation |
-| ElevenLabs | Free–$5/mo | 10k chars free, then $5/mo |
-| Pexels | Free | Unlimited stock footage |
-| YouTube API | Free | 10,000 units/day free |
-| **Total** | **~$0.10–$5/video** | |
-
-At $0.10/video × 5 videos/week = ~$2/week to run.
+| Tool | Cost | What it does |
+|------|------|-------------|
+| Groq API | **Free** | Writes scripts with Llama 3.3 70B |
+| edge-tts | **Free** | Microsoft neural voice |
+| Pexels API | **Free** | Stock footage |
+| YouTube API | **Free** | Uploads videos |
+| MoviePy | **Free** | Assembles video |
+| Pillow | **Free** | Creates thumbnails |
+| **Total** | **$0** | |
 
 ---
 
-## What niche should I pick?
+## Want to upgrade later?
 
-| Niche | Avg CPM | Difficulty |
-|-------|---------|-----------|
-| Personal Finance | $15–$25 | Medium |
-| AI & Tech | $10–$15 | Easy |
-| Business | $12–$20 | Medium |
-| Health | $8–$12 | Easy |
+| Upgrade | Cost | Benefit |
+|---------|------|---------|
+| ElevenLabs voice | $5/mo | More expressive voice |
+| Claude / GPT-4 | ~$0.10/video | Slightly better scripts |
+| Pexels (already free) | $0 | — |
 
-Change your niche in `start.py` line 21:
-```python
-NICHE = "personal_finance"
-```
+You can run this channel indefinitely for free. Upgrade only when you're already making money.

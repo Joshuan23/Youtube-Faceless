@@ -1,10 +1,13 @@
-# Core AI
-anthropic>=0.30.0
-openai>=1.35.0
+# ── LLM (pick at least one; Groq is free) ────────────────────────────────────
+groq>=0.9.0                    # FREE – https://console.groq.com
+google-generativeai>=0.7.0     # FREE – https://aistudio.google.com
+anthropic>=0.30.0              # paid  – https://console.anthropic.com
+openai>=1.35.0                 # paid  – https://platform.openai.com
 
-# Text-to-Speech
-elevenlabs>=1.0.0
-gtts>=2.5.0
+# ── Text-to-Speech (edge-tts is free) ────────────────────────────────────────
+edge-tts>=6.1.9                # FREE – Microsoft Edge neural voices
+elevenlabs>=1.0.0              # paid (free tier: 10k chars/mo)
+gtts>=2.5.0                    # FREE fallback (robotic quality)
 pyttsx3>=2.90
 
 # Video / Audio
