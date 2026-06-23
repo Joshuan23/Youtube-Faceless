@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Connect YouTube – WealthFlow</title>
+  <style>
+    :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--gold:#ffd700;--green:#3fb950;--red:#f85149;--text:#e6edf3;--muted:#8b949e}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:20px}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:12px;margin:-20px -20px 24px}
+    header a{color:var(--gold);font-size:.85rem;text-decoration:none}
+    header h1{font-size:1rem;flex:1}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:500px;margin:0 auto}
+    h2{color:var(--gold);margin-bottom:16px;font-size:1.1rem}
+    .step{display:flex;gap:12px;margin-bottom:20px;align-items:flex-start}
+    .num{background:var(--gold);color:#000;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+    .step p{font-size:.9rem;color:var(--muted);line-height:1.5;padding-top:4px}
+    .btn{display:block;width:100%;padding:14px;background:var(--gold);color:#000;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;margin-top:8px}
+    .btn.green{background:var(--green);color:#fff}
+    textarea{width:100%;background:#0d1117;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:12px;font-size:.9rem;margin-top:8px;resize:none}
+    .success{background:#1f4928;border:1px solid var(--green);border-radius:8px;padding:16px;color:var(--green);font-weight:600;text-align:center;margin-bottom:16px}
+    .error{background:#3d1f1f;border:1px solid var(--red);border-radius:8px;padding:16px;color:var(--red);margin-bottom:16px;font-size:.85rem}
+    .connected-badge{background:#1f4928;color:var(--green);padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600}
+  </style>
+</head>
+<body>
+<header>
+  <a href="/">← Dashboard</a>
+  <h1>Connect YouTube</h1>
+  {% if connected %}<span class="connected-badge">✓ Connected</span>{% endif %}
+</header>
+
+<div class="card">
+  {% if success %}
+  <div class="success">
+    ✅ YouTube connected successfully!<br>
+    <small style="font-weight:400">Videos will now upload automatically.</small>
+  </div>
+  <a href="/" class="btn green">← Back to Dashboard</a>
+
+  {% elif error %}
+  <div class="error">❌ Error: {{ error }}<br><br>Make sure you copied the full code from Google.</div>
+  <a href="/youtube-auth" class="btn">Try Again</a>
+
+  {% else %}
+  <h2>Connect your YouTube channel</h2>
+
+  <div class="step">
+    <div class="num">1</div>
+    <p>Tap the button below to open Google authorization in your browser</p>
+  </div>
+
+  {% if auth_url %}
+  <a href="{{ auth_url }}" target="_blank" class="btn">🔑 Open Google Authorization</a>
+  {% endif %}
+
+  <div class="step" style="margin-top:24px">
+    <div class="num">2</div>
+    <p>Sign in with your YouTube Google account and tap <strong>Allow</strong></p>
+  </div>
+
+  <div class="step">
+    <div class="num">3</div>
+    <p>Google will show you a code — copy it and paste it below</p>
+  </div>
+
+  <form method="POST" action="/youtube-auth/connect">
+    <textarea name="code" rows="3" placeholder="Paste the code from Google here..."></textarea>
+    <button type="submit" class="btn" style="margin-top:12px">✅ Connect YouTube</button>
+  </form>
+  {% endif %}
+</div>
+</body>
+</html>

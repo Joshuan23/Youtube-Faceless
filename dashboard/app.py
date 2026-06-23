@@ -40,6 +40,17 @@ analytics = Analytics(db)
 # tracks background jobs: {video_id: "running"|"done"|"error: ..."}
 _jobs: dict[int, str] = {}
 
+# holds pending OAuth flow between requests
+_yt_flow = {}
+
+
+def _yt_token_path():
+    return Path(__file__).parent.parent / "credentials" / "token.pickle"
+
+
+def _yt_connected():
+    return _yt_token_path().exists()
+
 
 @app.route("/")
 def index():
@@ -177,6 +188,45 @@ def download_file(video_id, file_type):
 @app.route("/healthz")
 def healthz():
     return "ok"
+
+
+@app.route("/youtube-auth")
+def youtube_auth():
+    secrets = Path(__file__).parent.parent / "credentials" / "client_secrets.json"
+    if not secrets.exists():
+        return ("<h2 style='font-family:sans-serif;color:red'>client_secrets.json not found."
+                " Upload it to the credentials/ folder first.</h2>"), 400
+    try:
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        flow = InstalledAppFlow.from_client_secrets_file(
+            str(secrets), ["https://www.googleapis.com/auth/youtube.upload"]
+        )
+        flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
+        auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+        _yt_flow["flow"] = flow
+    except Exception as e:
+        return f"<h2>Error: {e}</h2>", 500
+    connected = _yt_connected()
+    return render_template("youtube_auth.html", auth_url=auth_url, connected=connected, error=None, success=False)
+
+
+@app.route("/youtube-auth/connect", methods=["POST"])
+def youtube_auth_connect():
+    import pickle
+    code = request.form.get("code", "").strip()
+    flow = _yt_flow.get("flow")
+    if not flow or not code:
+        return "<h2>Missing code or session expired. <a href='/youtube-auth'>Try again</a></h2>", 400
+    try:
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+        tp = _yt_token_path()
+        tp.parent.mkdir(parents=True, exist_ok=True)
+        with open(tp, "wb") as f:
+            pickle.dump(creds, f)
+        return render_template("youtube_auth.html", auth_url=None, connected=True, error=None, success=True)
+    except Exception as e:
+        return render_template("youtube_auth.html", auth_url=None, connected=False, error=str(e), success=False)
 
 
 if __name__ == "__main__":
