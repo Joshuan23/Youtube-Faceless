@@ -55,7 +55,7 @@ class YouTubeUploader:
                         "See README: https://developers.google.com/youtube/v3/getting-started"
                     )
                 flow = InstalledAppFlow.from_client_secrets_file(secrets_file, SCOPES)
-                creds = flow.run_local_server(port=0)
+                creds = flow.run_console()
             creds_path.mkdir(parents=True, exist_ok=True)
             with open(token_path, "wb") as f:
                 pickle.dump(creds, f)
