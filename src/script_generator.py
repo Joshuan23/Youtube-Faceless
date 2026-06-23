@@ -82,62 +82,58 @@ class ScriptGenerator:
     def __init__(self):
         self.config = _load_config()
 
-    def generate(self, topic: str, niche: str) -> dict:
-        """
-        Two-call approach:
-          1. Small JSON for metadata (title, takeaways, section names)
-          2. Plain text for the full script — avoids JSON + newline issues entirely
-        """
+    def _params(self, niche: str):
         niche_cfg = self.config["niches"].get(niche, self.config["niches"]["personal_finance"])
         target_length = niche_cfg["optimal_video_length_min"]
         target_words  = int(target_length * 140)
         sections      = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["personal_finance"])
-        s1, s2, s3, s4 = sections[0], sections[1], sections[2], sections[3]
+        return target_length, target_words, sections
 
-        # ── Call 1: metadata JSON (small, safe) ──────────────────────
-        meta_prompt = META_PROMPT.format(
-            topic=topic, niche=niche,
-            target_length=target_length,
+    def generate_meta(self, topic: str, niche: str) -> dict:
+        """Call 1: small metadata JSON only (~3s)."""
+        target_length, _, sections = self._params(niche)
+        s1, s2, s3, s4 = sections
+        meta_raw = chat(SYSTEM_PROMPT, META_PROMPT.format(
+            topic=topic, niche=niche, target_length=target_length,
             s1=s1, s2=s2, s3=s3, s4=s4,
-        )
-        logger.info("Generating metadata for: %s", topic)
-        meta_raw = chat(SYSTEM_PROMPT, meta_prompt, max_tokens=512)
+        ), max_tokens=512)
         try:
-            meta = parse_json(meta_raw)
+            return parse_json(meta_raw)
         except Exception as e:
             logger.warning("Metadata parse failed (%s), using defaults", e)
-            meta = {
-                "title": topic,
-                "hook_line": "",
-                "key_takeaways": [],
-                "section_names": [s1, s2, s3, s4],
-                "estimated_duration_min": target_length,
-            }
+            return {"title": topic, "hook_line": "", "key_takeaways": [],
+                    "section_names": sections, "estimated_duration_min": target_length}
 
-        # ── Call 2: full script as plain text (no JSON) ───────────────
-        script_prompt = SCRIPT_PROMPT.format(
-            topic=topic, niche=niche,
-            target_length=target_length,
-            target_words=target_words,
-            s1=s1, s2=s2, s3=s3, s4=s4,
-        )
+    def generate_script_text(self, topic: str, niche: str) -> str:
+        """Call 2: full plain-text script only (~20s)."""
+        target_length, target_words, sections = self._params(niche)
+        s1, s2, s3, s4 = sections
         logger.info("Generating full script for: %s", topic)
-        full_script = chat(SYSTEM_PROMPT, script_prompt, max_tokens=4096)
+        return chat(SYSTEM_PROMPT, SCRIPT_PROMPT.format(
+            topic=topic, niche=niche, target_length=target_length,
+            target_words=target_words, s1=s1, s2=s2, s3=s3, s4=s4,
+        ), max_tokens=4096)
 
-        # ── Assemble sections from the plain-text script ──────────────
-        section_objects = _parse_sections(full_script, meta.get("section_names", [s1, s2, s3, s4]))
-
+    def build_result(self, meta: dict, full_script: str, topic: str, niche: str) -> dict:
+        """Assemble final script dict from separate meta + script text."""
+        target_length, _, sections = self._params(niche)
+        section_objects = _parse_sections(full_script, meta.get("section_names", sections))
         return {
-            "topic":                  topic,
-            "niche":                  niche,
-            "title":                  meta.get("title", topic),
-            "hook_line":              meta.get("hook_line", ""),
-            "key_takeaways":          meta.get("key_takeaways", []),
+            "topic": topic, "niche": niche,
+            "title": meta.get("title", topic),
+            "hook_line": meta.get("hook_line", ""),
+            "key_takeaways": meta.get("key_takeaways", []),
             "estimated_duration_min": meta.get("estimated_duration_min", target_length),
-            "word_count":             len(full_script.split()),
-            "sections":               section_objects,
-            "full_script":            full_script,
+            "word_count": len(full_script.split()),
+            "sections": section_objects,
+            "full_script": full_script,
         }
+
+    def generate(self, topic: str, niche: str) -> dict:
+        """All-in-one (sequential). Use generate_meta/generate_script_text for parallelism."""
+        meta = self.generate_meta(topic, niche)
+        full_script = self.generate_script_text(topic, niche)
+        return self.build_result(meta, full_script, topic, niche)
 
     def save(self, script_data: dict, output_dir: str) -> str:
         output_dir = Path(output_dir)

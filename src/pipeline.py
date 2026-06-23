@@ -10,7 +10,7 @@ import yaml
 
 from .database import Database
 from .topics import get_trending_topics
-from .script_generator import ScriptGenerator
+from .script_generator import ScriptGenerator, SECTION_TEMPLATES
 from .voiceover import generate_chunked
 from .video_creator import VideoCreator
 from .thumbnail import ThumbnailCreator
@@ -119,34 +119,50 @@ class Pipeline:
     # ── Steps ───────────────────────────────────────────────────────────────
 
     def _step_script(self, video_id: int, topic: str, niche: str) -> int:
+        import json
+        from concurrent.futures import ThreadPoolExecutor
+
         logger.info("[1/5] Generating script…")
         self.db.update_video(video_id, status="scripting")
-        script_data = self.script_gen.generate(topic, niche)
-        seo_data = self.seo.generate(script_data)
 
-        title = seo_data.get("recommended_title") or script_data.get("title") or topic
+        # Phase 1 — meta only (~3s, needed by both later calls)
+        meta = self.script_gen.generate_meta(topic, niche)
+
+        # Phase 2 — full script + SEO in parallel (~20s instead of ~35s)
+        section_names = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["personal_finance"])
+        seo_input = {
+            "topic": topic, "niche": niche,
+            "title": meta.get("title", topic),
+            "key_takeaways": meta.get("key_takeaways", []),
+            "sections": [{"name": s} for s in section_names],
+        }
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            script_future = ex.submit(self.script_gen.generate_script_text, topic, niche)
+            seo_future    = ex.submit(self.seo.generate, seo_input)
+            full_script   = script_future.result()
+            seo_data      = seo_future.result()
+
+        script_data = self.script_gen.build_result(meta, full_script, topic, niche)
+
+        title       = seo_data.get("recommended_title") or script_data.get("title") or topic
         description = self.seo.build_full_description(seo_data)
-        tags = seo_data.get("tags", [])
+        tags        = seo_data.get("tags", [])
 
         slug = _slugify(title)
         scripts_dir = OUTPUT_ROOT / "scripts"
         scripts_dir.mkdir(parents=True, exist_ok=True)
         script_path = str(scripts_dir / f"{slug}.txt")
         with open(script_path, "w") as f:
-            f.write(script_data.get("full_script", ""))
+            f.write(full_script)
 
-        import json
         meta_path = str(scripts_dir / f"{slug}_meta.json")
         with open(meta_path, "w") as f:
             json.dump({**script_data, "seo": seo_data}, f, indent=2)
 
         self.db.update_video(
-            video_id,
-            status="scripted",
-            title=title,
-            description=description,
-            tags=json.dumps(tags),
-            script_path=script_path,
+            video_id, status="scripted",
+            title=title, description=description,
+            tags=json.dumps(tags), script_path=script_path,
         )
         logger.info("Script saved: %s", script_path)
         return video_id
