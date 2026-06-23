@@ -39,6 +39,8 @@ analytics = Analytics(db)
 
 # tracks background jobs: {video_id: "running"|"done"|"error: ..."}
 _jobs: dict[int, str] = {}
+# pipeline instances keyed by video_id (for progress access)
+_pipelines: dict[int, object] = {}
 
 # holds pending OAuth flow between requests
 _yt_flow = {}
@@ -95,9 +97,11 @@ def generate():
     def _run():
         try:
             from src.pipeline import Pipeline
-            skip_upload = True          # always skip upload from dashboard
+            speed_mode  = (mode == "speed")
             dry_run     = (mode == "dry_run")
-            pipeline    = Pipeline(skip_upload=skip_upload, dry_run=dry_run)
+            skip_upload = (mode in ("dry_run", "speed_no_upload"))
+            pipeline    = Pipeline(skip_upload=skip_upload, dry_run=dry_run, speed_mode=speed_mode)
+            _pipelines[video_id] = pipeline
             pipeline.run_topic(topic, niche)
             _jobs[video_id] = "done"
         except Exception as e:
@@ -112,9 +116,11 @@ def generate():
 
 @app.route("/api/job/<int:video_id>")
 def job_status(video_id):
-    status = _jobs.get(video_id, "unknown")
-    video  = db.get_video(video_id)
-    return jsonify({"job": status, "video": video})
+    status   = _jobs.get(video_id, "unknown")
+    video    = db.get_video(video_id)
+    pipeline = _pipelines.get(video_id)
+    progress = pipeline.progress.get(video_id, {"step": "", "pct": 0}) if pipeline else {"step": "", "pct": 0}
+    return jsonify({"job": status, "video": video, "progress": progress})
 
 
 @app.route("/api/stats")

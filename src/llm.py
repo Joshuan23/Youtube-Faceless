@@ -14,10 +14,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "llama-3.3-70b-versatile"
-GEMINI_MODEL = "gemini-1.5-flash"
-CLAUDE_MODEL = "claude-sonnet-4-6"
-OPENAI_MODEL = "gpt-4o-mini"
+GROQ_MODEL      = "llama-3.3-70b-versatile"
+GROQ_FAST_MODEL = "llama-3.1-8b-instant"   # ~5x faster, used in speed mode
+GEMINI_MODEL    = "gemini-1.5-flash"
+CLAUDE_MODEL    = "claude-sonnet-4-6"
+OPENAI_MODEL    = "gpt-4o-mini"
 
 
 def _detect() -> str:
@@ -39,10 +40,20 @@ def _detect() -> str:
 def chat(system: str, user: str, max_tokens: int = 4096) -> str:
     """Send a chat message and return the text response."""
     provider = _detect()
-    logger.info("LLM provider: %s", provider)
-
     if provider == "groq":
-        return _groq(system, user, max_tokens)
+        return _groq(system, user, max_tokens, GROQ_MODEL)
+    if provider == "gemini":
+        return _gemini(system, user, max_tokens)
+    if provider == "claude":
+        return _claude(system, user, max_tokens)
+    return _openai(system, user, max_tokens)
+
+
+def chat_fast(system: str, user: str, max_tokens: int = 1024) -> str:
+    """Fast chat using the smallest/quickest available model."""
+    provider = _detect()
+    if provider == "groq":
+        return _groq(system, user, max_tokens, GROQ_FAST_MODEL)
     if provider == "gemini":
         return _gemini(system, user, max_tokens)
     if provider == "claude":
@@ -131,11 +142,11 @@ def _escape_string_literals(text: str) -> str:
 
 # ── Providers ──────────────────────────────────────────────────────────────
 
-def _groq(system: str, user: str, max_tokens: int) -> str:
+def _groq(system: str, user: str, max_tokens: int, model: str = GROQ_MODEL) -> str:
     from groq import Groq
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     resp = client.chat.completions.create(
-        model=GROQ_MODEL,
+        model=model,
         max_tokens=max_tokens,
         messages=[
             {"role": "system", "content": system},

@@ -7,6 +7,21 @@ from .llm import chat, parse_json
 
 logger = logging.getLogger(__name__)
 
+_NICHE_TAGS = {
+    "personal_finance": ["personal finance","money tips","how to save money","investing",
+        "financial freedom","passive income","budgeting","wealth building","make money",
+        "money management","financial advice","saving money","investment tips","rich mindset","money hacks"],
+    "ai_tech": ["artificial intelligence","AI tools","ChatGPT","AI tips","tech tips",
+        "AI for beginners","machine learning","AI productivity","future of AI",
+        "best AI tools","AI 2025","technology","AI tutorial","AI apps","automation"],
+    "business": ["how to start a business","entrepreneur","business tips","online business",
+        "make money online","business strategy","startup","side hustle","entrepreneurship",
+        "business growth","passive income","digital marketing","ecommerce","business ideas","success"],
+    "health": ["health tips","fitness","healthy lifestyle","wellness","nutrition",
+        "weight loss","mental health","exercise","diet tips","healthy habits",
+        "longevity","morning routine","self improvement","mindset","sleep tips"],
+}
+
 SYSTEM_PROMPT = """\
 You are a YouTube SEO specialist. You maximize organic discovery through:
 - Keyword-rich titles under 70 characters
@@ -64,6 +79,26 @@ Return a JSON object:
         seo = parse_json(raw)
         logger.info("SEO generated for: %s", seo.get("recommended_title"))
         return seo
+
+    def generate_speed(self, script_data: dict) -> dict:
+        """Instant SEO — zero LLM calls, uses predefined keyword lists."""
+        topic = script_data.get("topic", "")
+        niche = script_data.get("niche", "personal_finance")
+        title = script_data.get("title", topic)
+        tags  = _NICHE_TAGS.get(niche, _NICHE_TAGS["personal_finance"])
+        snippet = script_data.get("full_script", "")[:400].replace("\n", " ")
+        description = (
+            f"In this video, we cover {topic}.\n\n{snippet}...\n\n"
+            f"🔔 Subscribe for more {niche.replace('_', ' ')} tips!\n\n"
+            + " ".join(f"#{t.replace(' ','')}" for t in tags[:6])
+        )
+        return {
+            "recommended_title": title,
+            "description": description,
+            "tags": tags,
+            "chapters": [],
+            "hashtags": [f"#{t.replace(' ','')}" for t in tags[:6]],
+        }
 
     def build_full_description(self, seo: dict) -> str:
         desc = seo.get("description", "")

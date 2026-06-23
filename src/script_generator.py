@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 import yaml
-from .llm import chat, parse_json
+from .llm import chat, chat_fast, parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +134,31 @@ class ScriptGenerator:
         meta = self.generate_meta(topic, niche)
         full_script = self.generate_script_text(topic, niche)
         return self.build_result(meta, full_script, topic, niche)
+
+    def generate_speed(self, topic: str, niche: str) -> dict:
+        """Single fast LLM call — 4-min video, instant model. ~5s total."""
+        prompt = (
+            f'Write a 4-minute faceless YouTube script (~560 words) for the {niche} niche.\n'
+            f'Topic: "{topic}"\n\n'
+            f'First line must be: TITLE: [title under 70 chars]\n\n'
+            f'Then sections:\n[HOOK] 30-sec shocking opener\n'
+            f'[MAIN] 3 minutes of 3-4 key actionable points\n'
+            f'[CTA] 30-sec subscribe + share ask\n\n'
+            f'Be punchy and direct. Plain text only.'
+        )
+        raw = chat_fast(SYSTEM_PROMPT, prompt, max_tokens=1024)
+        lines = raw.strip().splitlines()
+        title = topic
+        if lines and lines[0].upper().startswith("TITLE:"):
+            title = lines[0].split(":", 1)[1].strip()
+            raw = "\n".join(lines[1:]).strip()
+        return {
+            "topic": topic, "niche": niche, "title": title,
+            "hook_line": "", "key_takeaways": [],
+            "estimated_duration_min": 4,
+            "word_count": len(raw.split()),
+            "sections": [], "full_script": raw,
+        }
 
     def save(self, script_data: dict, output_dir: str) -> str:
         output_dir = Path(output_dir)

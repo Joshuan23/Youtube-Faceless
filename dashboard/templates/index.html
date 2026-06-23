@@ -119,8 +119,9 @@
           <option value="health">🏃 Health</option>
         </select>
         <select name="mode" id="mode-sel">
-          <option value="dry_run" selected>✅ Script only (fast, free)</option>
-          <option value="full">🎬 Full video (needs ffmpeg)</option>
+          <option value="dry_run" selected>✅ Script only (~15s)</option>
+          <option value="speed">⚡ Speed video (~60s + upload)</option>
+          <option value="full">🎬 Full video (~4 min)</option>
         </select>
       </div>
       <div class="form-row">
@@ -240,7 +241,8 @@ const modeSel  = document.getElementById('mode-sel');
 const modeHint = document.getElementById('mode-hint');
 const hints = {
   dry_run: 'Script only: writes the script + SEO in ~15 seconds. No ffmpeg needed.',
-  full:    'Full video: script → voice → video assembly. Needs ffmpeg (~3 min).',
+  speed:   '⚡ Speed mode: 4-min video ready in ~60s, then uploads to YouTube in background.',
+  full:    'Full video: high-quality 10-min video. Script → voice → video (~4 min total).',
 };
 modeSel.addEventListener('change', () => { modeHint.textContent = hints[modeSel.value]; });
 
@@ -278,19 +280,31 @@ form.addEventListener('submit', async (e) => {
   item.id = 'job-' + id;
   item.innerHTML = `
     <div class="job-topic">${topic}</div>
-    <div class="job-status"><span class="spinner"></span>Starting…</div>`;
+    <div class="job-status"><span class="spinner"></span>Starting…</div>
+    <div style="margin-top:8px;background:#21262d;border-radius:6px;height:8px;overflow:hidden">
+      <div id="bar-${id}" style="height:100%;background:#ffd700;width:0%;transition:width .4s ease;border-radius:6px"></div>
+    </div>
+    <div id="step-${id}" style="font-size:.72rem;color:#8b949e;margin-top:4px">Starting…</div>`;
   jobLog.prepend(item);
 
-  // poll every 3 seconds
+  // poll every 2 seconds
   polls[id] = setInterval(async () => {
     const r = await fetch('/api/job/' + id);
     const d = await r.json();
     const el = document.getElementById('job-' + id);
     if (!el) return;
 
-    const status = d.job || 'unknown';
-    const video  = d.video || {};
-    const vstatus = video.status || '';
+    const status   = d.job || 'unknown';
+    const video    = d.video || {};
+    const vstatus  = video.status || '';
+    const progress = d.progress || {};
+    const pct      = progress.pct || 0;
+    const stepTxt  = progress.step || vstatus || 'working…';
+
+    const bar  = document.getElementById('bar-' + id);
+    const step = document.getElementById('step-' + id);
+    if (bar)  bar.style.width  = Math.max(pct, 0) + '%';
+    if (step) step.textContent = stepTxt;
 
     if (status === 'running') {
       el.querySelector('.job-status').innerHTML =
@@ -298,15 +312,17 @@ form.addEventListener('submit', async (e) => {
     } else if (status === 'done') {
       clearInterval(polls[id]);
       el.className = 'job-item done';
+      if (bar) { bar.style.width = '100%'; bar.style.background = '#3fb950'; }
       el.querySelector('.job-status').textContent = '✓ Done — ' + vstatus;
-      // reload table after 1s
-      setTimeout(() => location.reload(), 1200);
+      if (step) step.textContent = vstatus === 'uploading' ? 'Uploading to YouTube in background…' : 'Complete!';
+      setTimeout(() => location.reload(), 1500);
     } else if (status.startsWith('error')) {
       clearInterval(polls[id]);
       el.className = 'job-item error';
+      if (bar) bar.style.background = '#f85149';
       el.querySelector('.job-status').textContent = '✗ ' + status;
     }
-  }, 3000);
+  }, 2000);
 });
 </script>
 </body>

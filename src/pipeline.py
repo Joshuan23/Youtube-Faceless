@@ -38,11 +38,13 @@ def _slugify(text: str) -> str:
 class Pipeline:
     """End-to-end YouTube video production pipeline."""
 
-    def __init__(self, skip_upload: bool = False, dry_run: bool = False):
+    def __init__(self, skip_upload: bool = False, dry_run: bool = False, speed_mode: bool = False):
         self.config = _config()
         self.db = Database()
         self.skip_upload = skip_upload
-        self.dry_run = dry_run  # if True, skip TTS/video (text-only mode)
+        self.dry_run = dry_run
+        self.speed_mode = speed_mode  # 4-min video, fast model, background upload
+        self.progress: dict = {}      # {video_id: {"step": str, "pct": int}}
         self._script_gen = None
         self._seo = None
         self._voice_gen = None
@@ -78,28 +80,40 @@ class Pipeline:
 
     # ── Main entrypoints ────────────────────────────────────────────────────
 
+    def _progress(self, video_id: int, step: str, pct: int):
+        self.progress[video_id] = {"step": step, "pct": pct}
+
     def run_topic(self, topic: str, niche: str = None) -> int:
         """Produce and upload a single video for a given topic. Returns video DB id."""
         niche = niche or self.config["channel"]["niche"]
-        logger.info("▶ Pipeline start | niche=%s | topic=%s", niche, topic)
+        logger.info("▶ Pipeline start | niche=%s | topic=%s | speed=%s", niche, topic, self.speed_mode)
 
         video_id = self.db.create_video(topic, niche)
+        self._progress(video_id, "Starting…", 0)
 
         try:
+            self._progress(video_id, "Writing script…", 5)
             video_id = self._step_script(video_id, topic, niche)
             if not self.dry_run:
+                self._progress(video_id, "Generating voiceover…", 35)
                 video_id = self._step_audio(video_id)
+                self._progress(video_id, "Creating thumbnail…", 60)
                 video_id = self._step_thumbnail(video_id)
+                self._progress(video_id, "Assembling video…", 70)
                 video_id = self._step_video(video_id)
             else:
+                self._progress(video_id, "Creating thumbnail…", 60)
                 video_id = self._step_thumbnail(video_id)
             if not self.skip_upload and not self.dry_run:
+                self._progress(video_id, "Uploading to YouTube…", 85)
                 video_id = self._step_upload(video_id)
         except Exception as e:
             self.db.update_video(video_id, status="error")
+            self._progress(video_id, f"Error: {e}", -1)
             logger.error("Pipeline failed for video %d: %s", video_id, e)
             raise
 
+        self._progress(video_id, "Done!", 100)
         logger.info("✓ Pipeline complete | video_id=%d", video_id)
         return video_id
 
@@ -122,27 +136,30 @@ class Pipeline:
         import json
         from concurrent.futures import ThreadPoolExecutor
 
-        logger.info("[1/5] Generating script…")
+        logger.info("[1/5] Generating script… (speed=%s)", self.speed_mode)
         self.db.update_video(video_id, status="scripting")
 
-        # Phase 1 — meta only (~3s, needed by both later calls)
-        meta = self.script_gen.generate_meta(topic, niche)
-
-        # Phase 2 — full script + SEO in parallel (~20s instead of ~35s)
-        section_names = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["personal_finance"])
-        seo_input = {
-            "topic": topic, "niche": niche,
-            "title": meta.get("title", topic),
-            "key_takeaways": meta.get("key_takeaways", []),
-            "sections": [{"name": s} for s in section_names],
-        }
-        with ThreadPoolExecutor(max_workers=2) as ex:
-            script_future = ex.submit(self.script_gen.generate_script_text, topic, niche)
-            seo_future    = ex.submit(self.seo.generate, seo_input)
-            full_script   = script_future.result()
-            seo_data      = seo_future.result()
-
-        script_data = self.script_gen.build_result(meta, full_script, topic, niche)
+        if self.speed_mode:
+            # Single fast call (~5s) + instant SEO (0s)
+            script_data = self.script_gen.generate_speed(topic, niche)
+            seo_data    = self.seo.generate_speed(script_data)
+        else:
+            # Phase 1 — meta only (~3s)
+            meta = self.script_gen.generate_meta(topic, niche)
+            # Phase 2 — full script + SEO in parallel (~20s)
+            section_names = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["personal_finance"])
+            seo_input = {
+                "topic": topic, "niche": niche,
+                "title": meta.get("title", topic),
+                "key_takeaways": meta.get("key_takeaways", []),
+                "sections": [{"name": s} for s in section_names],
+            }
+            with ThreadPoolExecutor(max_workers=2) as ex:
+                script_future = ex.submit(self.script_gen.generate_script_text, topic, niche)
+                seo_future    = ex.submit(self.seo.generate, seo_input)
+                full_script   = script_future.result()
+                seo_data      = seo_future.result()
+            script_data = self.script_gen.build_result(meta, full_script, topic, niche)
 
         title       = seo_data.get("recommended_title") or script_data.get("title") or topic
         description = self.seo.build_full_description(seo_data)
@@ -241,12 +258,10 @@ class Pipeline:
         self.db.update_video(video_id, thumb_path=thumb_path, status="thumbnailed")
         return video_id
 
-    def _step_upload(self, video_id: int) -> int:
-        logger.info("[5/5] Uploading to YouTube…")
-        video = self.db.get_video(video_id)
+    def _do_upload(self, video_id: int):
         import json as _json
-        tags = _json.loads(video["tags"]) if video["tags"] else []
-
+        video = self.db.get_video(video_id)
+        tags  = _json.loads(video["tags"]) if video["tags"] else []
         result = self.uploader.upload(
             video_path=video["video_path"],
             title=video["title"],
@@ -262,5 +277,17 @@ class Pipeline:
             uploaded_at=datetime.utcnow().isoformat(),
             status="uploaded",
         )
+        self._progress(video_id, "Uploaded!", 100)
         logger.info("Published: %s", result["youtube_url"])
+
+    def _step_upload(self, video_id: int) -> int:
+        if self.speed_mode:
+            # Fire-and-forget — pipeline returns immediately, upload continues in background
+            import threading
+            self.db.update_video(video_id, status="uploading")
+            threading.Thread(target=self._do_upload, args=(video_id,), daemon=True).start()
+            logger.info("[5/5] Upload started in background")
+        else:
+            logger.info("[5/5] Uploading to YouTube…")
+            self._do_upload(video_id)
         return video_id
