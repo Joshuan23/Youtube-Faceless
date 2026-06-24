@@ -83,12 +83,12 @@ class Pipeline:
     def _progress(self, video_id: int, step: str, pct: int):
         self.progress[video_id] = {"step": step, "pct": pct}
 
-    def run_topic(self, topic: str, niche: str = None) -> int:
+    def run_topic(self, topic: str, niche: str = None, video_id: int = None) -> int:
         """Produce and upload a single video for a given topic. Returns video DB id."""
         niche = niche or self.config["channel"]["niche"]
         logger.info("▶ Pipeline start | niche=%s | topic=%s | speed=%s", niche, topic, self.speed_mode)
 
-        video_id = self.db.create_video(topic, niche)
+        video_id = video_id or self.db.create_video(topic, niche)
         self._progress(video_id, "Starting…", 0)
 
         try:

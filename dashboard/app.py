@@ -99,10 +99,10 @@ def generate():
             from src.pipeline import Pipeline
             speed_mode  = (mode == "speed")
             dry_run     = (mode == "dry_run")
-            skip_upload = (mode in ("dry_run", "speed_no_upload"))
+            skip_upload = (mode in ("dry_run",))
             pipeline    = Pipeline(skip_upload=skip_upload, dry_run=dry_run, speed_mode=speed_mode)
             _pipelines[video_id] = pipeline
-            pipeline.run_topic(topic, niche)
+            pipeline.run_topic(topic, niche, video_id=video_id)
             _jobs[video_id] = "done"
         except Exception as e:
             _jobs[video_id] = f"error: {e}"
