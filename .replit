@@ -9,7 +9,7 @@ channel = "stable-23_11"
 PORT = "8080"
 
 [deployment]
-run = ["sh", "-c", "python dashboard/app.py"]
+run = ["sh", "-c", "bash run.sh"]
 deploymentTarget = "cloudrun"
 
 [[ports]]

@@ -1,5 +1,7 @@
 #!/bin/bash
 # Replit entry point — install deps then start the dashboard
+echo "Installing system ffmpeg..."
+apt-get install -y ffmpeg 2>/dev/null || true
 echo "Installing base packages..."
 pip install flask pyyaml groq edge-tts gtts Pillow requests python-dotenv pydub 2>&1 | tail -3
 echo "Installing video packages..."

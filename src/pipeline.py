@@ -209,26 +209,40 @@ class Pipeline:
         video_dir.mkdir(parents=True, exist_ok=True)
         output_path = str(video_dir / f"{slug}.mp4")
 
-        # Try ffmpeg first — no Python deps needed
-        try:
-            if thumb_path and Path(thumb_path).exists():
-                img_args = ["-loop", "1", "-i", thumb_path]
-            else:
-                img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=24"]
-            cmd = (
-                ["ffmpeg", "-y"]
-                + img_args
-                + ["-i", audio_path,
-                   "-c:v", "libx264", "-tune", "stillimage",
-                   "-c:a", "aac", "-b:a", "192k",
-                   "-pix_fmt", "yuv420p", "-shortest",
-                   output_path]
-            )
-            subprocess.run(cmd, check=True, capture_output=True)
-            self.db.update_video(video_id, video_path=output_path, status="produced")
-            return video_id
-        except Exception as e:
-            logger.warning("ffmpeg failed (%s), trying moviepy", e)
+        # Resolve ffmpeg binary — prefer system, fall back to imageio-ffmpeg bundle
+        def _ffmpeg_bin():
+            import shutil
+            if shutil.which("ffmpeg"):
+                return "ffmpeg"
+            try:
+                import imageio_ffmpeg
+                return imageio_ffmpeg.get_ffmpeg_exe()
+            except Exception:
+                return None
+
+        ffmpeg = _ffmpeg_bin()
+        if ffmpeg:
+            try:
+                if thumb_path and Path(thumb_path).exists():
+                    img_args = ["-loop", "1", "-i", thumb_path]
+                else:
+                    img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=24"]
+                cmd = (
+                    [ffmpeg, "-y"]
+                    + img_args
+                    + ["-i", audio_path,
+                       "-c:v", "libx264", "-tune", "stillimage",
+                       "-c:a", "aac", "-b:a", "192k",
+                       "-pix_fmt", "yuv420p", "-shortest",
+                       output_path]
+                )
+                result = subprocess.run(cmd, check=True, capture_output=True)
+                self.db.update_video(video_id, video_path=output_path, status="produced")
+                return video_id
+            except Exception as e:
+                logger.warning("ffmpeg failed (%s), trying moviepy", e)
+        else:
+            logger.warning("ffmpeg not found, trying moviepy")
 
         # Fallback to moviepy
         import json as _json
