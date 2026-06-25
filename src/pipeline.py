@@ -209,53 +209,35 @@ class Pipeline:
         video_dir.mkdir(parents=True, exist_ok=True)
         output_path = str(video_dir / f"{slug}.mp4")
 
-        # Resolve ffmpeg binary — prefer system, fall back to imageio-ffmpeg bundle
-        def _ffmpeg_bin():
+        if not audio_path or not Path(audio_path).exists():
+            raise RuntimeError(f"Audio file missing: {audio_path}")
+
+        # imageio-ffmpeg ships its own binary via pip — always available
+        try:
+            import imageio_ffmpeg
+            ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
             import shutil
-            if shutil.which("ffmpeg"):
-                return "ffmpeg"
-            try:
-                import imageio_ffmpeg
-                return imageio_ffmpeg.get_ffmpeg_exe()
-            except Exception:
-                return None
+            ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
 
-        ffmpeg = _ffmpeg_bin()
-        if ffmpeg:
-            try:
-                if thumb_path and Path(thumb_path).exists():
-                    img_args = ["-loop", "1", "-i", thumb_path]
-                else:
-                    img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=24"]
-                cmd = (
-                    [ffmpeg, "-y"]
-                    + img_args
-                    + ["-i", audio_path,
-                       "-c:v", "libx264", "-tune", "stillimage",
-                       "-c:a", "aac", "-b:a", "192k",
-                       "-pix_fmt", "yuv420p", "-shortest",
-                       output_path]
-                )
-                result = subprocess.run(cmd, check=True, capture_output=True)
-                self.db.update_video(video_id, video_path=output_path, status="produced")
-                return video_id
-            except Exception as e:
-                logger.warning("ffmpeg failed (%s), trying moviepy", e)
+        if thumb_path and Path(thumb_path).exists():
+            img_args = ["-loop", "1", "-i", thumb_path]
         else:
-            logger.warning("ffmpeg not found, trying moviepy")
+            img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=24"]
 
-        # Fallback to moviepy
-        import json as _json
-        scripts_dir = OUTPUT_ROOT / "scripts"
-        meta_path = scripts_dir / f"{slug}_meta.json"
-        if meta_path.exists():
-            with open(meta_path) as f:
-                script_data = _json.load(f)
-        else:
-            script_data = {"title": video["title"], "sections": [], "niche": video["niche"]}
-
-        creator = VideoCreator()
-        creator.create(script_data, audio_path, output_path, broll_query=video["topic"])
+        cmd = (
+            [ffmpeg, "-y"] + img_args
+            + ["-i", audio_path,
+               "-c:v", "libx264", "-tune", "stillimage",
+               "-c:a", "aac", "-b:a", "192k",
+               "-pix_fmt", "yuv420p", "-shortest",
+               output_path]
+        )
+        logger.info("Running: %s", " ".join(cmd))
+        result = subprocess.run(cmd, capture_output=True, timeout=300)
+        if result.returncode != 0:
+            err = result.stderr.decode("utf-8", errors="replace")[-600:]
+            raise RuntimeError(f"ffmpeg rc={result.returncode}: {err}")
 
         self.db.update_video(video_id, video_path=output_path, status="produced")
         return video_id
