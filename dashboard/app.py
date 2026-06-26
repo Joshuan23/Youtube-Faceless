@@ -230,9 +230,13 @@ def youtube_auth_connect():
         tp.parent.mkdir(parents=True, exist_ok=True)
         with open(tp, "wb") as f:
             pickle.dump(creds, f)
-        return render_template("youtube_auth.html", auth_url=None, connected=True, error=None, success=True)
+        import base64
+        token_b64 = base64.b64encode(pickle.dumps(creds)).decode()
+        return render_template("youtube_auth.html", auth_url=None, connected=True,
+                               error=None, success=True, token_b64=token_b64)
     except Exception as e:
-        return render_template("youtube_auth.html", auth_url=None, connected=False, error=str(e), success=False)
+        return render_template("youtube_auth.html", auth_url=None, connected=False,
+                               error=str(e), success=False, token_b64=None)
 
 
 if __name__ == "__main__":

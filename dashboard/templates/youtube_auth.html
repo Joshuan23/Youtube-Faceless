@@ -37,6 +37,18 @@
     ✅ YouTube connected successfully!<br>
     <small style="font-weight:400">Videos will now upload automatically.</small>
   </div>
+
+  {% if token_b64 %}
+  <div style="margin:20px 0">
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:8px">
+      <strong style="color:var(--gold)">Important:</strong> To keep YouTube connected after redeployments,
+      add this as a Replit Secret named <code>YOUTUBE_TOKEN_B64</code>:
+    </p>
+    <textarea rows="4" readonly onclick="this.select()" style="font-size:.7rem;word-break:break-all">{{ token_b64 }}</textarea>
+    <p style="color:var(--muted);font-size:.8rem;margin-top:6px">Tap the box above to select all → copy → paste in Replit Secrets tab</p>
+  </div>
+  {% endif %}
+
   <a href="/" class="btn green">← Back to Dashboard</a>
 
   {% elif error %}

@@ -30,35 +30,42 @@ class YouTubeUploader:
         if self._service:
             return self._service
         from googleapiclient.discovery import build
-        from google_auth_oauthlib.flow import InstalledAppFlow
         from google.auth.transport.requests import Request
 
         creds_path = Path(__file__).parent.parent / "credentials"
         token_path = creds_path / "token.pickle"
-        secrets_file = os.getenv(
-            "YOUTUBE_CLIENT_SECRETS_FILE",
-            str(creds_path / "client_secrets.json"),
-        )
 
         creds = None
-        if token_path.exists():
+
+        # Try loading from env var first (survives redeployments)
+        token_b64 = os.getenv("YOUTUBE_TOKEN_B64")
+        if token_b64:
+            import base64
+            try:
+                creds = pickle.loads(base64.b64decode(token_b64))
+            except Exception:
+                creds = None
+
+        if not creds and token_path.exists():
             with open(token_path, "rb") as f:
                 creds = pickle.load(f)
 
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                if not Path(secrets_file).exists():
-                    raise FileNotFoundError(
-                        f"YouTube client secrets not found: {secrets_file}\n"
-                        "See README: https://developers.google.com/youtube/v3/getting-started"
-                    )
-                flow = InstalledAppFlow.from_client_secrets_file(secrets_file, SCOPES)
-                creds = flow.run_console()
+        if not creds:
+            raise RuntimeError(
+                "YouTube not connected. Go to /youtube-auth in the dashboard to connect."
+            )
+
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            # Persist refreshed token
             creds_path.mkdir(parents=True, exist_ok=True)
             with open(token_path, "wb") as f:
                 pickle.dump(creds, f)
+
+        if not creds.valid:
+            raise RuntimeError(
+                "YouTube credentials invalid. Go to /youtube-auth to reconnect."
+            )
 
         self._service = build(API_SERVICE, API_VERSION, credentials=creds)
         return self._service
