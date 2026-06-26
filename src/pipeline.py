@@ -221,15 +221,15 @@ class Pipeline:
             ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
 
         if thumb_path and Path(thumb_path).exists():
-            img_args = ["-loop", "1", "-i", thumb_path]
+            img_args = ["-loop", "1", "-r", "1", "-i", thumb_path]
         else:
-            img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=24"]
+            img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=1"]
 
         cmd = (
             [ffmpeg, "-y"] + img_args
             + ["-i", audio_path,
                "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage",
-               "-c:a", "aac", "-b:a", "128k",
+               "-c:a", "copy",
                "-pix_fmt", "yuv420p", "-shortest",
                output_path]
         )
