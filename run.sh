@@ -1,5 +1,7 @@
 #!/bin/bash
 # Replit entry point — install deps then start the dashboard
+echo "Pulling latest code..."
+git pull origin claude/faceless-youtube-channel-jzncg0 2>/dev/null || true
 echo "Installing system ffmpeg..."
 apt-get install -y ffmpeg 2>/dev/null || true
 echo "Installing base packages..."

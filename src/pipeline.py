@@ -228,8 +228,8 @@ class Pipeline:
         cmd = (
             [ffmpeg, "-y"] + img_args
             + ["-i", audio_path,
-               "-c:v", "libx264", "-tune", "stillimage",
-               "-c:a", "aac", "-b:a", "192k",
+               "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage",
+               "-c:a", "aac", "-b:a", "128k",
                "-pix_fmt", "yuv420p", "-shortest",
                output_path]
         )
