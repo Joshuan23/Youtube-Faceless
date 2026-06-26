@@ -136,17 +136,17 @@ class ScriptGenerator:
         return self.build_result(meta, full_script, topic, niche)
 
     def generate_speed(self, topic: str, niche: str) -> dict:
-        """Single fast LLM call — 4-min video, instant model. ~5s total."""
+        """Single fast LLM call — 90-sec video, instant model. ~3s total."""
         prompt = (
-            f'Write a 4-minute faceless YouTube script (~560 words) for the {niche} niche.\n'
+            f'Write a 90-second faceless YouTube script (~210 words) for the {niche} niche.\n'
             f'Topic: "{topic}"\n\n'
             f'First line must be: TITLE: [title under 70 chars]\n\n'
-            f'Then sections:\n[HOOK] 30-sec shocking opener\n'
-            f'[MAIN] 3 minutes of 3-4 key actionable points\n'
-            f'[CTA] 30-sec subscribe + share ask\n\n'
-            f'Be punchy and direct. Plain text only.'
+            f'[HOOK] 15-sec shocking opener\n'
+            f'[MAIN] 60 sec of 2-3 punchy key points\n'
+            f'[CTA] 15-sec subscribe ask\n\n'
+            f'Plain text only. Be direct and punchy.'
         )
-        raw = chat_fast(SYSTEM_PROMPT, prompt, max_tokens=1024)
+        raw = chat_fast(SYSTEM_PROMPT, prompt, max_tokens=400)
         lines = raw.strip().splitlines()
         title = topic
         if lines and lines[0].upper().startswith("TITLE:"):

@@ -95,10 +95,20 @@ class Pipeline:
             self._progress(video_id, "Writing script…", 5)
             video_id = self._step_script(video_id, topic, niche)
             if not self.dry_run:
-                self._progress(video_id, "Generating voiceover…", 35)
-                video_id = self._step_audio(video_id)
-                self._progress(video_id, "Creating thumbnail…", 60)
-                video_id = self._step_thumbnail(video_id)
+                if self.speed_mode:
+                    # Audio + thumbnail in parallel — saves the thumbnail time
+                    self._progress(video_id, "Generating audio & thumbnail…", 35)
+                    from concurrent.futures import ThreadPoolExecutor
+                    with ThreadPoolExecutor(max_workers=2) as ex:
+                        af = ex.submit(self._step_audio, video_id)
+                        tf = ex.submit(self._step_thumbnail, video_id)
+                        af.result()
+                        tf.result()
+                else:
+                    self._progress(video_id, "Generating voiceover…", 35)
+                    video_id = self._step_audio(video_id)
+                    self._progress(video_id, "Creating thumbnail…", 60)
+                    video_id = self._step_thumbnail(video_id)
                 self._progress(video_id, "Assembling video…", 70)
                 video_id = self._step_video(video_id)
             else:
