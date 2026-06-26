@@ -54,14 +54,14 @@ def _get_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
-def _draw_gradient_bg(draw: ImageDraw.Draw, w: int, h: int, color1: str, color2: str):
-    c1 = tuple(int(color1.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
-    c2 = tuple(int(color2.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
-    for y in range(h):
-        r = int(c1[0] + (c2[0] - c1[0]) * y / h)
-        g = int(c1[1] + (c2[1] - c1[1]) * y / h)
-        b = int(c1[2] + (c2[2] - c1[2]) * y / h)
-        draw.line([(0, y), (w, y)], fill=(r, g, b))
+def _draw_gradient_bg(img: Image.Image, w: int, h: int, color1: str, color2: str):
+    c1 = tuple(int(color1.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+    c2 = tuple(int(color2.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+    # 1×2 image resized to full size — PIL does this in C, no Python loop
+    grad = Image.new("RGB", (1, 2))
+    grad.putpixel((0, 0), c1)
+    grad.putpixel((0, 1), c2)
+    img.paste(grad.resize((w, h), Image.BILINEAR))
 
 
 class ThumbnailCreator:
@@ -76,11 +76,11 @@ class ThumbnailCreator:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         w, h = self.config["width"], self.config["height"]
         img = Image.new("RGB", (w, h))
-        draw = ImageDraw.Draw(img)
 
-        # Gradient background
+        # Gradient background — fast PIL resize, no Python loop
         g1, g2 = GRADIENT_PRESETS[variant % len(GRADIENT_PRESETS)]
-        _draw_gradient_bg(draw, w, h, g1, g2)
+        _draw_gradient_bg(img, w, h, g1, g2)
+        draw = ImageDraw.Draw(img)
 
         # Bold accent border stripe at top
         accent = ACCENT_COLORS[variant % len(ACCENT_COLORS)]
