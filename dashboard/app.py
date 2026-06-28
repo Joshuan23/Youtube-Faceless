@@ -45,6 +45,13 @@ _pipelines: dict[int, object] = {}
 # holds pending OAuth flow between requests
 _yt_flow = {}
 
+# On startup: reset any "uploading" videos to "error" — those threads died with the container
+try:
+    for v in db.list_videos(status="uploading", limit=100):
+        db.update_video(v["id"], status="error")
+except Exception:
+    pass
+
 
 def _yt_token_path():
     return Path(__file__).parent.parent / "credentials" / "token.pickle"
@@ -150,7 +157,7 @@ def api_upload(video_id):
 
 @app.route("/api/retry/<int:video_id>", methods=["POST"])
 def api_retry(video_id):
-    """Re-run video assembly + upload for a stuck video."""
+    """Re-run from audio step onward for a stuck/error video."""
     video = db.get_video(video_id)
     if not video:
         return jsonify({"ok": False, "error": "Video not found"}), 404
@@ -160,8 +167,23 @@ def api_retry(video_id):
     def _do():
         try:
             from src.pipeline import Pipeline
+            from pathlib import Path as _Path
             p = Pipeline(skip_upload=False, dry_run=False, speed_mode=True)
             _pipelines[video_id] = p
+
+            # If audio is missing, regenerate from script
+            audio_path = video.get("audio_path") or ""
+            if not audio_path or not _Path(audio_path).exists():
+                p._progress(video_id, "Regenerating voiceover…", 30)
+                p._step_audio(video_id)
+
+            # If thumbnail missing, redo it
+            thumb_path = video.get("thumb_path") or ""
+            if not thumb_path or not _Path(thumb_path).exists():
+                p._progress(video_id, "Regenerating thumbnail…", 50)
+                p._step_thumbnail(video_id)
+
+            # Always reassemble video (file likely gone after container restart)
             p._progress(video_id, "Assembling video…", 70)
             p._step_video(video_id)
             p._progress(video_id, "Uploading to YouTube…", 85)

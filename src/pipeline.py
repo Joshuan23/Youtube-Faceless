@@ -354,32 +354,52 @@ class Pipeline:
 
     def _do_upload(self, video_id: int):
         import json as _json
-        video = self.db.get_video(video_id)
-        tags  = _json.loads(video["tags"]) if video["tags"] else []
-        result = self.uploader.upload(
-            video_path=video["video_path"],
-            title=video["title"],
-            description=video["description"],
-            tags=tags,
-            thumbnail_path=video["thumb_path"],
-            niche=video["niche"],
-        )
-        self.db.update_video(
-            video_id,
-            youtube_id=result["youtube_id"],
-            youtube_url=result["youtube_url"],
-            uploaded_at=datetime.utcnow().isoformat(),
-            status="uploaded",
-        )
-        self._progress(video_id, "Uploaded!", 100)
-        logger.info("Published: %s", result["youtube_url"])
+        try:
+            video = self.db.get_video(video_id)
+            if not video:
+                raise RuntimeError(f"Video {video_id} not found in DB")
+            video_path = video.get("video_path") or ""
+            if not video_path or not Path(video_path).exists():
+                raise RuntimeError(
+                    f"Video file missing: {video_path}. "
+                    "The server may have restarted — regenerate this video."
+                )
+            tags = _json.loads(video["tags"]) if video["tags"] else []
+            result = self.uploader.upload(
+                video_path=video_path,
+                title=video["title"],
+                description=video["description"],
+                tags=tags,
+                thumbnail_path=video["thumb_path"],
+                niche=video["niche"],
+            )
+            self.db.update_video(
+                video_id,
+                youtube_id=result["youtube_id"],
+                youtube_url=result["youtube_url"],
+                uploaded_at=datetime.utcnow().isoformat(),
+                status="uploaded",
+            )
+            self._progress(video_id, "Uploaded!", 100)
+            logger.info("Published: %s", result["youtube_url"])
+        except Exception as e:
+            logger.error("Upload failed for video %d: %s", video_id, e)
+            self.db.update_video(video_id, status="error")
+            self._progress(video_id, f"Upload error: {e}", -1)
+            raise
 
     def _step_upload(self, video_id: int) -> int:
         if self.speed_mode:
-            # Fire-and-forget — pipeline returns immediately, upload continues in background
             import threading
             self.db.update_video(video_id, status="uploading")
-            threading.Thread(target=self._do_upload, args=(video_id,), daemon=True).start()
+
+            def _bg():
+                try:
+                    self._do_upload(video_id)
+                except Exception:
+                    pass  # already handled in _do_upload
+
+            threading.Thread(target=_bg, daemon=True).start()
             logger.info("[5/5] Upload started in background")
         else:
             logger.info("[5/5] Uploading to YouTube…")

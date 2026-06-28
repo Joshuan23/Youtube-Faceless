@@ -225,7 +225,7 @@
             <span class="badge badge-{{ v.status }}">{{ v.status }}</span>
             {% if v.status == 'produced' %}
               <button onclick="triggerUpload({{ v.id }}, this)" style="margin-left:8px;padding:3px 10px;background:#238636;color:#fff;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-weight:600">⬆ Upload</button>
-            {% elif v.status in ['thumbnailed','error'] %}
+            {% elif v.status in ['thumbnailed','error','uploading'] %}
               <button onclick="triggerRetry({{ v.id }}, this)" style="margin-left:8px;padding:3px 10px;background:#b08800;color:#000;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-weight:600">↺ Retry</button>
             {% endif %}
           </td>
