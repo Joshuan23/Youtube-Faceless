@@ -179,6 +179,7 @@ class Pipeline:
         scripts_dir = OUTPUT_ROOT / "scripts"
         scripts_dir.mkdir(parents=True, exist_ok=True)
         script_path = str(scripts_dir / f"{slug}.txt")
+        full_script = script_data.get("full_script", "")
         with open(script_path, "w") as f:
             f.write(full_script)
 
