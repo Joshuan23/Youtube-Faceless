@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 API_SERVICE = "youtube"
 API_VERSION = "v3"
-RESUMABLE_CHUNK = 1024 * 1024 * 10  # 10 MB
+RESUMABLE_CHUNK = 1024 * 1024 * 50  # 50 MB
 
 CATEGORY_IDS = {
     "personal_finance": "27",  # Education

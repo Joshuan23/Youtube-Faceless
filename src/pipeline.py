@@ -274,19 +274,19 @@ class Pipeline:
 
         if font_path:
             vf = (
-                "scale=1920:1080:force_original_aspect_ratio=increase,"
-                "crop=1920:1080,"
+                "scale=1280:720:force_original_aspect_ratio=increase,"
+                "crop=1280:720,"
                 # Dark overlay strip at bottom
-                "drawbox=x=0:y=h-110:w=iw:h=110:color=black@0.75:t=fill,"
+                "drawbox=x=0:y=h-75:w=iw:h=75:color=black@0.75:t=fill,"
                 f"drawtext=fontfile='{font_path}':"
                 f"text='{safe_title}':"
-                "fontsize=44:fontcolor=white:"
-                "x=(w-text_w)/2:y=h-80"
+                "fontsize=30:fontcolor=white:"
+                "x=(w-text_w)/2:y=h-55"
             )
         else:
             vf = (
-                "scale=1920:1080:force_original_aspect_ratio=increase,"
-                "crop=1920:1080"
+                "scale=1280:720:force_original_aspect_ratio=increase,"
+                "crop=1280:720"
             )
 
         cmd = [
@@ -294,9 +294,10 @@ class Pipeline:
             "-f", "concat", "-safe", "0", "-i", concat_path,
             "-i", audio_path,
             "-vf", vf,
-            "-c:v", "libx264", "-preset", "ultrafast",
-            "-c:a", "aac", "-b:a", "128k",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+            "-c:a", "aac", "-b:a", "96k",
             "-pix_fmt", "yuv420p",
+            "-threads", "0",
             "-shortest",
             output_path,
         ]
