@@ -123,6 +123,58 @@ def job_status(video_id):
     return jsonify({"job": status, "video": video, "progress": progress})
 
 
+@app.route("/api/upload/<int:video_id>", methods=["POST"])
+def api_upload(video_id):
+    """Manually trigger upload for a produced video."""
+    video = db.get_video(video_id)
+    if not video:
+        return jsonify({"ok": False, "error": "Video not found"}), 404
+    if not video.get("video_path") or not Path(video["video_path"]).exists():
+        return jsonify({"ok": False, "error": "Video file missing — regenerate first"}), 400
+
+    _jobs[video_id] = "running"
+
+    def _do():
+        try:
+            from src.pipeline import Pipeline
+            p = Pipeline(skip_upload=False, dry_run=False)
+            _pipelines[video_id] = p
+            p._do_upload(video_id)
+            _jobs[video_id] = "done"
+        except Exception as e:
+            _jobs[video_id] = f"error: {e}"
+
+    threading.Thread(target=_do, daemon=True).start()
+    return jsonify({"ok": True, "video_id": video_id})
+
+
+@app.route("/api/retry/<int:video_id>", methods=["POST"])
+def api_retry(video_id):
+    """Re-run video assembly + upload for a stuck video."""
+    video = db.get_video(video_id)
+    if not video:
+        return jsonify({"ok": False, "error": "Video not found"}), 404
+
+    _jobs[video_id] = "running"
+
+    def _do():
+        try:
+            from src.pipeline import Pipeline
+            p = Pipeline(skip_upload=False, dry_run=False, speed_mode=True)
+            _pipelines[video_id] = p
+            p._progress(video_id, "Assembling video…", 70)
+            p._step_video(video_id)
+            p._progress(video_id, "Uploading to YouTube…", 85)
+            p._do_upload(video_id)
+            p._progress(video_id, "Done!", 100)
+            _jobs[video_id] = "done"
+        except Exception as e:
+            _jobs[video_id] = f"error: {e}"
+
+    threading.Thread(target=_do, daemon=True).start()
+    return jsonify({"ok": True, "video_id": video_id})
+
+
 @app.route("/api/stats")
 def api_stats():
     return jsonify({
