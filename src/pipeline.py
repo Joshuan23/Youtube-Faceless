@@ -210,11 +210,13 @@ class Pipeline:
 
     def _step_video(self, video_id: int) -> int:
         logger.info("[3/5] Assembling video…")
-        import subprocess
+        import subprocess, tempfile
         video = self.db.get_video(video_id)
         audio_path = video["audio_path"]
         thumb_path = video.get("thumb_path") or ""
-        slug = _slugify(video["title"] or video["topic"])
+        title = video.get("title") or video.get("topic") or "WealthFlow"
+        niche = video.get("niche") or "personal_finance"
+        slug = _slugify(title)
         video_dir = OUTPUT_ROOT / "videos"
         video_dir.mkdir(parents=True, exist_ok=True)
         output_path = str(video_dir / f"{slug}.mp4")
@@ -222,7 +224,6 @@ class Pipeline:
         if not audio_path or not Path(audio_path).exists():
             raise RuntimeError(f"Audio file missing: {audio_path}")
 
-        # imageio-ffmpeg ships its own binary via pip — always available
         try:
             import imageio_ffmpeg
             ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
@@ -230,6 +231,96 @@ class Pipeline:
             import shutil
             ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
 
+        # Try stock footage first
+        from .stock_video import get_clips
+        clips_dir = str(OUTPUT_ROOT / "clips" / slug)
+        clips = get_clips(video.get("topic") or title, niche, count=4, output_dir=clips_dir)
+
+        if clips:
+            output_path = self._make_footage_video(
+                ffmpeg, clips, audio_path, title, output_path
+            )
+        else:
+            output_path = self._make_static_video(
+                ffmpeg, thumb_path, audio_path, output_path
+            )
+
+        self.db.update_video(video_id, video_path=output_path, status="produced")
+        return video_id
+
+    def _make_footage_video(self, ffmpeg: str, clips: list, audio_path: str,
+                            title: str, output_path: str) -> str:
+        """Combine stock clips + audio into a class-style educational video."""
+        import subprocess, tempfile, os
+
+        # Write concat list — repeat clips 6× to ensure longer than any audio
+        concat_path = output_path.replace(".mp4", "_concat.txt")
+        with open(concat_path, "w") as f:
+            for _ in range(6):
+                for clip in clips:
+                    f.write(f"file '{clip}'\n")
+
+        # Escape title for ffmpeg drawtext
+        safe_title = title.replace("'", "").replace(":", " -").replace("\\", "")[:55]
+
+        # Find a font for text overlay
+        font_candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        ]
+        font_path = next((f for f in font_candidates if Path(f).exists()), None)
+
+        if font_path:
+            vf = (
+                "scale=1920:1080:force_original_aspect_ratio=increase,"
+                "crop=1920:1080,"
+                # Dark overlay strip at bottom
+                "drawbox=x=0:y=h-110:w=iw:h=110:color=black@0.75:t=fill,"
+                f"drawtext=fontfile='{font_path}':"
+                f"text='{safe_title}':"
+                "fontsize=44:fontcolor=white:"
+                "x=(w-text_w)/2:y=h-80"
+            )
+        else:
+            vf = (
+                "scale=1920:1080:force_original_aspect_ratio=increase,"
+                "crop=1920:1080"
+            )
+
+        cmd = [
+            ffmpeg, "-y",
+            "-f", "concat", "-safe", "0", "-i", concat_path,
+            "-i", audio_path,
+            "-vf", vf,
+            "-c:v", "libx264", "-preset", "ultrafast",
+            "-c:a", "aac", "-b:a", "128k",
+            "-pix_fmt", "yuv420p",
+            "-shortest",
+            output_path,
+        ]
+        logger.info("Building footage video…")
+        result = subprocess.run(cmd, capture_output=True, timeout=600)
+
+        # Clean up concat file
+        try:
+            Path(concat_path).unlink()
+        except Exception:
+            pass
+
+        if result.returncode != 0:
+            err = result.stderr.decode("utf-8", errors="replace")[-600:]
+            logger.warning("Footage video failed (%s), falling back to static", err[-100:])
+            # Fall back to static image
+            return self._make_static_video(ffmpeg, "", audio_path, output_path)
+
+        logger.info("Footage video done: %s", output_path)
+        return output_path
+
+    def _make_static_video(self, ffmpeg: str, thumb_path: str,
+                           audio_path: str, output_path: str) -> str:
+        """Fallback: static thumbnail image + audio."""
+        import subprocess
         if thumb_path and Path(thumb_path).exists():
             img_args = ["-loop", "1", "-r", "1", "-i", thumb_path]
         else:
@@ -239,18 +330,13 @@ class Pipeline:
             [ffmpeg, "-y"] + img_args
             + ["-i", audio_path,
                "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage",
-               "-c:a", "copy",
-               "-pix_fmt", "yuv420p", "-shortest",
-               output_path]
+               "-c:a", "copy", "-pix_fmt", "yuv420p", "-shortest", output_path]
         )
-        logger.info("Running: %s", " ".join(cmd))
         result = subprocess.run(cmd, capture_output=True, timeout=300)
         if result.returncode != 0:
             err = result.stderr.decode("utf-8", errors="replace")[-600:]
             raise RuntimeError(f"ffmpeg rc={result.returncode}: {err}")
-
-        self.db.update_video(video_id, video_path=output_path, status="produced")
-        return video_id
+        return output_path
 
     def _step_thumbnail(self, video_id: int) -> int:
         logger.info("[4/5] Creating thumbnail…")
