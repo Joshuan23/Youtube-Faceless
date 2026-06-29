@@ -45,10 +45,12 @@ _pipelines: dict[int, object] = {}
 # holds pending OAuth flow between requests
 _yt_flow = {}
 
-# On startup: reset any "uploading" videos to "error" — those threads died with the container
+# On startup: reset all in-progress statuses — those threads died with the container
+_STUCK_STATUSES = ["uploading", "scripting", "voiced"]
 try:
-    for v in db.list_videos(status="uploading", limit=100):
-        db.update_video(v["id"], status="error")
+    for _stuck in _STUCK_STATUSES:
+        for v in db.list_videos(status=_stuck, limit=100):
+            db.update_video(v["id"], status="error")
 except Exception:
     pass
 
@@ -190,6 +192,42 @@ def api_retry(video_id):
 
     threading.Thread(target=_do, daemon=True).start()
     return jsonify({"ok": True, "video_id": video_id})
+
+
+@app.route("/api/run-all", methods=["POST"])
+def api_run_all():
+    """Kick off full pipeline for every non-uploaded video."""
+    all_videos = db.list_videos(limit=100)
+    skipped_statuses = {"uploaded", "uploading"}
+    count = 0
+    for video in all_videos:
+        vid_id = video["id"]
+        status = video.get("status") or "pending"
+        if status in skipped_statuses:
+            continue
+        if _jobs.get(vid_id) == "running":
+            continue
+        topic = video.get("topic") or ""
+        niche  = video.get("niche") or "personal_finance"
+        if not topic:
+            continue
+        _jobs[vid_id] = "running"
+        count += 1
+
+        def _do(v_id=vid_id, t=topic, n=niche):
+            try:
+                from src.pipeline import Pipeline
+                p = Pipeline(skip_upload=False, dry_run=False, speed_mode=True)
+                _pipelines[v_id] = p
+                p.run_topic(t, n, video_id=v_id)
+                _jobs[v_id] = "done"
+            except Exception as e:
+                _jobs[v_id] = f"error: {e}"
+                db.update_video(v_id, status="error")
+
+        threading.Thread(target=_do, daemon=True).start()
+
+    return jsonify({"ok": True, "count": count})
 
 
 @app.route("/api/stats")

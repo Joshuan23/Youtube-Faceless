@@ -205,7 +205,10 @@
 
   <!-- ── VIDEO TABLE ──────────────────────────────────────────────── -->
   <div class="card">
-    <div class="section-title">Videos</div>
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+      Videos
+      <button onclick="runAllPending(this)" style="padding:6px 14px;background:#b08800;color:#000;border:none;border-radius:6px;font-size:.8rem;cursor:pointer;font-weight:700">↺ Run All Pending</button>
+    </div>
     {% if videos %}
     <table>
       <thead><tr><th>Title</th><th>Status</th><th>Views</th><th>Revenue</th></tr></thead>
@@ -223,10 +226,12 @@
           </td>
           <td>
             <span class="badge badge-{{ v.status }}">{{ v.status }}</span>
-            {% if v.status == 'produced' %}
+            {% if v.status == 'uploaded' %}
+              {# nothing — already done #}
+            {% elif v.status == 'produced' %}
               <button onclick="triggerUpload({{ v.id }}, this)" style="margin-left:8px;padding:3px 10px;background:#238636;color:#fff;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-weight:600">⬆ Upload</button>
-            {% elif v.status in ['thumbnailed','error','uploading'] %}
-              <button onclick="triggerRetry({{ v.id }}, this)" style="margin-left:8px;padding:3px 10px;background:#b08800;color:#000;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-weight:600">↺ Retry</button>
+            {% else %}
+              <button onclick="triggerRetry({{ v.id }}, this)" style="margin-left:8px;padding:3px 10px;background:#b08800;color:#000;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-weight:600">↺ Run</button>
             {% endif %}
           </td>
           <td>{{ "{:,}".format(v.views) }}</td>
@@ -341,11 +346,20 @@ async function triggerUpload(id, btn) {
 }
 
 async function triggerRetry(id, btn) {
-  btn.disabled = true; btn.textContent = 'Retrying…';
+  btn.disabled = true; btn.textContent = 'Working…';
   const r = await fetch(`/api/retry/${id}`, {method:'POST'});
   const d = await r.json();
-  if (d.ok) { btn.textContent = '⏳ Working…'; btn.style.background='#444'; }
+  if (d.ok) { btn.textContent = '⏳ Running…'; btn.style.background='#444'; }
   else { btn.textContent = '✗ ' + d.error; btn.style.background='#f85149'; }
+}
+
+async function runAllPending(btn) {
+  btn.disabled = true; btn.textContent = '⏳ Starting all…';
+  const r = await fetch('/api/run-all', {method:'POST'});
+  const d = await r.json();
+  btn.textContent = `✓ Started ${d.count} videos`;
+  btn.style.background = '#238636'; btn.style.color = '#fff';
+  setTimeout(() => location.reload(), 2000);
 }
 </script>
 </body>
