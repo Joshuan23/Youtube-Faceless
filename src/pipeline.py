@@ -365,14 +365,13 @@ class Pipeline:
             video_path = video.get("video_path") or ""
             if not video_path or not Path(video_path).exists():
                 raise RuntimeError(
-                    f"Video file missing: {video_path}. "
-                    "The server may have restarted — regenerate this video."
+                    "Video file missing — server restarted. Click Retry to rebuild."
                 )
             tags = _json.loads(video["tags"]) if video["tags"] else []
             result = self.uploader.upload(
                 video_path=video_path,
-                title=video["title"],
-                description=video["description"],
+                title=video["title"] or video["topic"],
+                description=video["description"] or video["topic"],
                 tags=tags,
                 thumbnail_path=video["thumb_path"],
                 niche=video["niche"],
@@ -383,29 +382,19 @@ class Pipeline:
                 youtube_url=result["youtube_url"],
                 uploaded_at=datetime.utcnow().isoformat(),
                 status="uploaded",
+                last_error=None,
             )
             self._progress(video_id, "Uploaded!", 100)
             logger.info("Published: %s", result["youtube_url"])
         except Exception as e:
-            logger.error("Upload failed for video %d: %s", video_id, e)
-            self.db.update_video(video_id, status="error")
-            self._progress(video_id, f"Upload error: {e}", -1)
+            err = str(e)
+            logger.error("Upload failed for video %d: %s", video_id, err)
+            self.db.update_video(video_id, status="error", last_error=err)
+            self._progress(video_id, f"Error: {err}", -1)
             raise
 
     def _step_upload(self, video_id: int) -> int:
-        if self.speed_mode:
-            import threading
-            self.db.update_video(video_id, status="uploading")
-
-            def _bg():
-                try:
-                    self._do_upload(video_id)
-                except Exception:
-                    pass  # already handled in _do_upload
-
-            threading.Thread(target=_bg, daemon=True).start()
-            logger.info("[5/5] Upload started in background")
-        else:
-            logger.info("[5/5] Uploading to YouTube…")
-            self._do_upload(video_id)
+        logger.info("[5/5] Uploading to YouTube…")
+        self.db.update_video(video_id, status="uploading")
+        self._do_upload(video_id)
         return video_id

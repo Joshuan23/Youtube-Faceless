@@ -63,6 +63,15 @@ def _yt_connected():
     return _yt_token_path().exists()
 
 
+def _yt_status():
+    try:
+        from src.uploader import YouTubeUploader
+        YouTubeUploader()._get_service()
+        return "connected"
+    except Exception as e:
+        return str(e)
+
+
 @app.route("/")
 def index():
     summary   = analytics.monthly_summary()
@@ -73,6 +82,7 @@ def index():
         current_videos=stats["uploaded"], avg_views_per_video=50_000
     )
     provider  = active_provider()
+    yt_status = _yt_status()
     return render_template(
         "index.html",
         summary=summary,
@@ -83,6 +93,7 @@ def index():
         months_to_target=proj.get("months_to_target"),
         path_data=analytics.videos_needed_for_target(),
         llm_provider=provider,
+        yt_status=yt_status,
         jobs=_jobs,
     )
 
@@ -304,6 +315,18 @@ def download_file(video_id, file_type):
 @app.route("/healthz")
 def healthz():
     return "ok"
+
+
+@app.route("/api/test-youtube")
+def api_test_youtube():
+    """Check if YouTube credentials are valid and return status."""
+    try:
+        from src.uploader import YouTubeUploader
+        u = YouTubeUploader()
+        u._get_service()
+        return jsonify({"ok": True, "status": "connected"})
+    except Exception as e:
+        return jsonify({"ok": False, "status": "disconnected", "error": str(e)})
 
 
 @app.route("/youtube-auth")

@@ -89,9 +89,14 @@
   {% elif llm_provider == "claude" %}
     <span class="pill warn">Claude</span>
   {% elif llm_provider == "none" %}
-    <span class="pill err">⚠ No API key</span>
+    <span class="pill err">⚠ No LLM key</span>
   {% else %}
     <span class="pill warn">{{ llm_provider }}</span>
+  {% endif %}
+  {% if yt_status == "connected" %}
+    <span class="pill">▶ YouTube ✓</span>
+  {% else %}
+    <span class="pill err" title="{{ yt_status }}">⚠ YouTube not connected — <a href="/youtube-auth" style="color:inherit">connect now</a></span>
   {% endif %}
 </header>
 
@@ -232,6 +237,9 @@
               <button onclick="triggerUpload({{ v.id }}, this)" style="margin-left:8px;padding:3px 10px;background:#238636;color:#fff;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-weight:600">⬆ Upload</button>
             {% else %}
               <button onclick="triggerRetry({{ v.id }}, this)" style="margin-left:8px;padding:3px 10px;background:#b08800;color:#000;border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-weight:600">↺ Run</button>
+            {% endif %}
+            {% if v.last_error %}
+              <div style="font-size:.7rem;color:var(--red);margin-top:3px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ v.last_error }}">⚠ {{ v.last_error[:80] }}</div>
             {% endif %}
           </td>
           <td>{{ "{:,}".format(v.views) }}</td>

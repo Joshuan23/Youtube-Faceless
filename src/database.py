@@ -26,7 +26,7 @@ class Database:
                     niche       TEXT NOT NULL,
                     title       TEXT,
                     description TEXT,
-                    tags        TEXT,          -- JSON array
+                    tags        TEXT,
                     script_path TEXT,
                     audio_path  TEXT,
                     video_path  TEXT,
@@ -34,6 +34,7 @@ class Database:
                     youtube_id  TEXT,
                     youtube_url TEXT,
                     status      TEXT DEFAULT 'pending',
+                    last_error  TEXT,
                     views       INTEGER DEFAULT 0,
                     revenue_usd REAL DEFAULT 0.0,
                     created_at  TEXT DEFAULT (datetime('now')),
@@ -58,6 +59,11 @@ class Database:
                     value TEXT
                 );
             """)
+            # Migration: add last_error column if missing (existing databases)
+            try:
+                conn.execute("ALTER TABLE videos ADD COLUMN last_error TEXT")
+            except Exception:
+                pass  # column already exists
 
     # ── Videos ──────────────────────────────────────────────────────────────
 
