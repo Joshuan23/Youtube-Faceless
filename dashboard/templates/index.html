@@ -113,6 +113,18 @@
     </div>
     {% endif %}
 
+    {% if yt_status == "connected" %}
+    <div style="background:#1a2e1a;border:1px solid #2a5a2a;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.85rem;color:var(--green);display:flex;align-items:center;gap:8px">
+      ✅ <strong>YouTube connected</strong> — videos will upload automatically
+    </div>
+    {% else %}
+    <div style="background:#2d1010;border:1px solid #5a1a1a;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.85rem;color:var(--red)">
+      ⚠ <strong>YouTube NOT connected</strong> — videos will stop at "produced" and won't upload.<br>
+      <span style="color:#aaa;font-size:.8rem">Error: {{ yt_status }}</span><br>
+      <a href="/youtube-auth" style="color:var(--gold);font-weight:600;margin-top:6px;display:inline-block">→ Connect YouTube now</a>
+    </div>
+    {% endif %}
+
     <form id="gen-form">
       <div class="form-row">
         <input type="text" name="topic" id="topic-input"
