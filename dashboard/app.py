@@ -46,7 +46,7 @@ _pipelines: dict[int, object] = {}
 _yt_flow = {}
 
 # On startup: reset all in-progress statuses — those threads died with the container
-_STUCK_STATUSES = ["uploading", "scripting", "voiced"]
+_STUCK_STATUSES = ["uploading", "scripting", "scripted", "voiced", "thumbnailed", "produced"]
 try:
     for _stuck in _STUCK_STATUSES:
         for v in db.list_videos(status=_stuck, limit=100):

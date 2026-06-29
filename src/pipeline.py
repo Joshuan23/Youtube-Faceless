@@ -118,7 +118,7 @@ class Pipeline:
                 self._progress(video_id, "Uploading to YouTube…", 85)
                 video_id = self._step_upload(video_id)
         except Exception as e:
-            self.db.update_video(video_id, status="error")
+            self.db.update_video(video_id, status="error", last_error=str(e))
             self._progress(video_id, f"Error: {e}", -1)
             logger.error("Pipeline failed for video %d: %s", video_id, e)
             raise

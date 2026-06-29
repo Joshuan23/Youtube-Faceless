@@ -346,31 +346,73 @@ form.addEventListener('submit', async (e) => {
       el.className = 'job-item done';
       if (bar) { bar.style.width = '100%'; bar.style.background = '#3fb950'; }
       el.querySelector('.job-status').textContent = '✓ Done — ' + vstatus;
-      if (step) step.textContent = vstatus === 'uploading' ? 'Uploading to YouTube in background…' : 'Complete!';
+      if (step) step.textContent = 'Complete!';
       setTimeout(() => location.reload(), 1500);
     } else if (status.startsWith('error')) {
       clearInterval(polls[id]);
       el.className = 'job-item error';
       if (bar) bar.style.background = '#f85149';
       el.querySelector('.job-status').textContent = '✗ ' + status;
+      if (step) step.textContent = progress.step || status;
+      setTimeout(() => location.reload(), 3000);
     }
   }, 2000);
 });
 
+// ── Live row polling (for Retry / Upload buttons) ────────────────────────
+function pollRow(id) {
+  const iv = setInterval(async () => {
+    try {
+      const r = await fetch('/api/job/' + id);
+      const d = await r.json();
+      const row = document.getElementById('row-' + id);
+      if (!row) { clearInterval(iv); return; }
+
+      const job     = d.job || 'unknown';
+      const video   = d.video || {};
+      const vstatus = video.status || '';
+      const prog    = d.progress || {};
+      const stepTxt = prog.step || vstatus || 'working…';
+
+      const badge = row.querySelector('.badge');
+      if (badge) { badge.textContent = vstatus || 'running'; badge.className = 'badge badge-' + (vstatus || 'running'); }
+
+      let cell = row.querySelector('td:nth-child(2)');
+      let info = cell.querySelector('.row-progress');
+      if (!info) {
+        info = document.createElement('div');
+        info.className = 'row-progress';
+        info.style.cssText = 'font-size:.72rem;color:#8b949e;margin-top:3px';
+        cell.appendChild(info);
+      }
+      info.textContent = stepTxt;
+
+      if (job === 'done' || (job && job.startsWith('error'))) {
+        clearInterval(iv);
+        if (job.startsWith('error')) {
+          info.style.color = '#f85149';
+          info.textContent = job.replace('error: ', '');
+        }
+        setTimeout(() => location.reload(), 1500);
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
 async function triggerUpload(id, btn) {
-  btn.disabled = true; btn.textContent = 'Uploading…';
+  btn.disabled = true; btn.textContent = '⏳ Uploading…'; btn.style.background='#444';
   const r = await fetch(`/api/upload/${id}`, {method:'POST'});
   const d = await r.json();
-  if (d.ok) { btn.textContent = '⏳ Check dashboard'; btn.style.background='#444'; }
-  else { btn.textContent = '✗ ' + d.error; btn.style.background='#f85149'; }
+  if (d.ok) pollRow(id);
+  else { btn.textContent = '✗ ' + d.error; btn.style.background='#f85149'; btn.disabled=false; }
 }
 
 async function triggerRetry(id, btn) {
-  btn.disabled = true; btn.textContent = 'Working…';
+  btn.disabled = true; btn.textContent = '⏳ Running…'; btn.style.background='#444';
   const r = await fetch(`/api/retry/${id}`, {method:'POST'});
   const d = await r.json();
-  if (d.ok) { btn.textContent = '⏳ Running…'; btn.style.background='#444'; }
-  else { btn.textContent = '✗ ' + d.error; btn.style.background='#f85149'; }
+  if (d.ok) pollRow(id);
+  else { btn.textContent = '✗ ' + d.error; btn.style.background='#f85149'; btn.disabled=false; }
 }
 
 async function runAllPending(btn) {
