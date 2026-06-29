@@ -91,7 +91,7 @@ def index():
 def generate():
     topic  = request.form.get("topic", "").strip()
     niche  = request.form.get("niche", "personal_finance")
-    mode   = request.form.get("mode", "dry_run")   # dry_run | full
+    mode   = request.form.get("mode", "speed")   # speed | full | dry_run
 
     if not topic:
         from src.topics import get_trending_topics
@@ -132,24 +132,32 @@ def job_status(video_id):
 
 @app.route("/api/upload/<int:video_id>", methods=["POST"])
 def api_upload(video_id):
-    """Manually trigger upload for a produced video."""
+    """Upload a produced video, or re-run full pipeline if file is missing."""
     video = db.get_video(video_id)
     if not video:
         return jsonify({"ok": False, "error": "Video not found"}), 404
-    if not video.get("video_path") or not Path(video["video_path"]).exists():
-        return jsonify({"ok": False, "error": "Video file missing — regenerate first"}), 400
+
+    video_path = video.get("video_path") or ""
+    file_ok = video_path and Path(video_path).exists()
 
     _jobs[video_id] = "running"
 
     def _do():
         try:
             from src.pipeline import Pipeline
-            p = Pipeline(skip_upload=False, dry_run=False)
+            p = Pipeline(skip_upload=False, dry_run=False, speed_mode=True)
             _pipelines[video_id] = p
-            p._do_upload(video_id)
+            if file_ok:
+                p._do_upload(video_id)
+            else:
+                # File gone (container restart) — rebuild everything then upload
+                topic = video.get("topic") or ""
+                niche = video.get("niche") or "personal_finance"
+                p.run_topic(topic, niche, video_id=video_id)
             _jobs[video_id] = "done"
         except Exception as e:
             _jobs[video_id] = f"error: {e}"
+            db.update_video(video_id, status="error")
 
     threading.Thread(target=_do, daemon=True).start()
     return jsonify({"ok": True, "video_id": video_id})
@@ -157,41 +165,28 @@ def api_upload(video_id):
 
 @app.route("/api/retry/<int:video_id>", methods=["POST"])
 def api_retry(video_id):
-    """Re-run from audio step onward for a stuck/error video."""
+    """Full pipeline re-run for a stuck/error/thumbnailed video."""
     video = db.get_video(video_id)
     if not video:
         return jsonify({"ok": False, "error": "Video not found"}), 404
+
+    topic = video.get("topic") or ""
+    niche = video.get("niche") or "personal_finance"
+    if not topic:
+        return jsonify({"ok": False, "error": "No topic saved for this video"}), 400
 
     _jobs[video_id] = "running"
 
     def _do():
         try:
             from src.pipeline import Pipeline
-            from pathlib import Path as _Path
             p = Pipeline(skip_upload=False, dry_run=False, speed_mode=True)
             _pipelines[video_id] = p
-
-            # If audio is missing, regenerate from script
-            audio_path = video.get("audio_path") or ""
-            if not audio_path or not _Path(audio_path).exists():
-                p._progress(video_id, "Regenerating voiceover…", 30)
-                p._step_audio(video_id)
-
-            # If thumbnail missing, redo it
-            thumb_path = video.get("thumb_path") or ""
-            if not thumb_path or not _Path(thumb_path).exists():
-                p._progress(video_id, "Regenerating thumbnail…", 50)
-                p._step_thumbnail(video_id)
-
-            # Always reassemble video (file likely gone after container restart)
-            p._progress(video_id, "Assembling video…", 70)
-            p._step_video(video_id)
-            p._progress(video_id, "Uploading to YouTube…", 85)
-            p._do_upload(video_id)
-            p._progress(video_id, "Done!", 100)
+            p.run_topic(topic, niche, video_id=video_id)
             _jobs[video_id] = "done"
         except Exception as e:
             _jobs[video_id] = f"error: {e}"
+            db.update_video(video_id, status="error")
 
     threading.Thread(target=_do, daemon=True).start()
     return jsonify({"ok": True, "video_id": video_id})

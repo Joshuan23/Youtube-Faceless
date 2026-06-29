@@ -119,17 +119,17 @@
           <option value="health">🏃 Health</option>
         </select>
         <select name="mode" id="mode-sel">
-          <option value="dry_run" selected>✅ Script only (~15s)</option>
-          <option value="speed">⚡ Speed video (~60s + upload)</option>
+          <option value="speed" selected>⚡ Speed video (~60s + upload)</option>
           <option value="full">🎬 Full video (~4 min)</option>
+          <option value="dry_run">📝 Script only (~15s, no upload)</option>
         </select>
       </div>
       <div class="form-row">
-        <button type="submit" class="btn btn-gold">▶ Generate</button>
+        <button type="submit" class="btn btn-gold">▶ Generate &amp; Upload</button>
         <button type="button" class="btn btn-outline" onclick="pickTopic()">🎲 Random Topic</button>
       </div>
       <div class="mode-hint" id="mode-hint">
-        Script only: writes the script + SEO in ~15 seconds. No ffmpeg needed.
+        Speed video: script → voice → stock footage video → YouTube upload. ~60 seconds total.
       </div>
     </form>
 
@@ -247,9 +247,9 @@
 const modeSel  = document.getElementById('mode-sel');
 const modeHint = document.getElementById('mode-hint');
 const hints = {
-  dry_run: 'Script only: writes the script + SEO in ~15 seconds. No ffmpeg needed.',
-  speed:   '⚡ Speed mode: 4-min video ready in ~60s, then uploads to YouTube in background.',
-  full:    'Full video: high-quality 10-min video. Script → voice → video (~4 min total).',
+  speed:   '⚡ Speed video: script → voice → stock footage → YouTube upload. ~60 seconds total.',
+  full:    '🎬 Full video: high-quality longer video. Script → voice → video (~4 min total).',
+  dry_run: '📝 Script only: writes the script + SEO in ~15 seconds. No upload.',
 };
 modeSel.addEventListener('change', () => { modeHint.textContent = hints[modeSel.value]; });
 
