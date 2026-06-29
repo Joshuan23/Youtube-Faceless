@@ -329,6 +329,15 @@ def healthz():
     return "ok"
 
 
+YT_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+
+
+def _redirect_uri():
+    """The OAuth callback URL for THIS deployment (always https)."""
+    host = request.host  # e.g. youtube-faceless--joshuansandoval.replit.app
+    return f"https://{host}/youtube-auth/callback"
+
+
 @app.route("/youtube-auth")
 def youtube_auth():
     secrets = Path(__file__).parent.parent / "credentials" / "client_secrets.json"
@@ -336,32 +345,43 @@ def youtube_auth():
         # No OAuth client config yet — show the one-time Google Cloud setup guide
         return render_template("youtube_auth.html",
             auth_url=None, connected=False, error=None,
-            success=False, needs_setup=True)
+            success=False, needs_setup=True, redirect_uri=_redirect_uri())
     try:
-        from google_auth_oauthlib.flow import InstalledAppFlow
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(secrets), ["https://www.googleapis.com/auth/youtube.upload"]
+        from google_auth_oauthlib.flow import Flow
+        flow = Flow.from_client_secrets_file(
+            str(secrets), scopes=YT_SCOPES, redirect_uri=_redirect_uri()
         )
-        flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
-        auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+        auth_url, state = flow.authorization_url(
+            prompt="consent", access_type="offline", include_granted_scopes="true"
+        )
         _yt_flow["flow"] = flow
+        _yt_flow["state"] = state
     except Exception as e:
         return render_template("youtube_auth.html",
             auth_url=None, connected=False, error=str(e),
-            success=False, needs_setup=False)
+            success=False, needs_setup=False, redirect_uri=_redirect_uri())
     return render_template("youtube_auth.html",
         auth_url=auth_url,
         connected=_yt_token_path().exists(),
-        error=None, success=False, needs_setup=False)
+        error=None, success=False, needs_setup=False, redirect_uri=_redirect_uri())
 
 
-@app.route("/youtube-auth/connect", methods=["POST"])
-def youtube_auth_connect():
+@app.route("/youtube-auth/callback")
+def youtube_auth_callback():
+    """Google redirects here with ?code=... after the user approves."""
     import pickle, base64
-    code = request.form.get("code", "").strip()
+    error = request.args.get("error")
+    code  = request.args.get("code")
+    if error:
+        return render_template("youtube_auth.html",
+            auth_url=None, connected=False, error=f"Google returned: {error}",
+            success=False, needs_setup=False, redirect_uri=_redirect_uri())
     flow = _yt_flow.get("flow")
     if not flow or not code:
-        return "<h2>Missing code or session expired. <a href='/youtube-auth'>Try again</a></h2>", 400
+        return render_template("youtube_auth.html",
+            auth_url=None, connected=False,
+            error="Session expired — start again from Connect YouTube.",
+            success=False, needs_setup=False, redirect_uri=_redirect_uri())
     try:
         flow.fetch_token(code=code)
         creds = flow.credentials
@@ -373,11 +393,12 @@ def youtube_auth_connect():
         _yt_cache["ts"] = 0  # force status refresh
         return render_template("youtube_auth.html",
             auth_url=None, connected=True,
-            error=None, success=True, token_b64=token_b64)
+            error=None, success=True, token_b64=token_b64, needs_setup=False)
     except Exception as e:
         return render_template("youtube_auth.html",
             auth_url=None, connected=False,
-            error=str(e), success=False, token_b64=None)
+            error=str(e), success=False, token_b64=None, needs_setup=False,
+            redirect_uri=_redirect_uri())
 
 
 if __name__ == "__main__":

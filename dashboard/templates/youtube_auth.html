@@ -75,23 +75,38 @@
   <div class="step">
     <div class="num">4</div>
     <p>Go to <strong>Credentials → Create Credentials → OAuth client ID</strong>.
-       Choose application type <strong>Desktop app</strong> and click Create.</p>
+       Choose application type <strong>Web application</strong> (NOT Desktop).</p>
   </div>
   <div class="step">
     <div class="num">5</div>
-    <p>Click <strong>Download JSON</strong>. Rename the file to exactly
-       <code>client_secrets.json</code>.</p>
+    <p>Under <strong>Authorized redirect URIs</strong>, click <strong>+ ADD URI</strong>
+       and paste this <u>exactly</u>:</p>
   </div>
+  {% if redirect_uri %}
+  <textarea rows="2" readonly onclick="this.select()" style="font-size:.78rem;word-break:break-all;margin:-12px 0 16px">{{ redirect_uri }}</textarea>
+  {% endif %}
   <div class="step">
     <div class="num">6</div>
+    <p>Click <strong>Create</strong>, then <strong>Download JSON</strong>. Rename the file
+       to exactly <code>client_secrets.json</code>.</p>
+  </div>
+  <div class="step">
+    <div class="num">7</div>
     <p>In Replit, open the <code>credentials/</code> folder and upload
-       <code>client_secrets.json</code> there. Then come back and refresh this page.</p>
+       <code>client_secrets.json</code> there. Then refresh this page.</p>
   </div>
 
   <a href="/youtube-auth" class="btn">↻ I've uploaded it — refresh</a>
 
   {% elif error %}
-  <div class="error">❌ Error: {{ error }}<br><br>Make sure you copied the full code from Google.</div>
+  <div class="error">❌ Error: {{ error }}</div>
+  {% if redirect_uri %}
+  <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px">
+    If this says <strong>redirect_uri_mismatch</strong>, make sure this exact URL is added
+    under <strong>Authorized redirect URIs</strong> in your Google OAuth client:
+  </p>
+  <textarea rows="2" readonly onclick="this.select()" style="font-size:.78rem;word-break:break-all;margin-bottom:12px">{{ redirect_uri }}</textarea>
+  {% endif %}
   <a href="/youtube-auth" class="btn">Try Again</a>
 
   {% else %}
@@ -99,27 +114,22 @@
 
   <div class="step">
     <div class="num">1</div>
-    <p>Tap the button below to open Google authorization in your browser</p>
+    <p>Tap the button below — you'll be sent to Google to sign in.</p>
   </div>
 
   {% if auth_url %}
-  <a href="{{ auth_url }}" target="_blank" class="btn">🔑 Open Google Authorization</a>
+  <a href="{{ auth_url }}" class="btn">🔑 Sign in with Google</a>
   {% endif %}
 
   <div class="step" style="margin-top:24px">
     <div class="num">2</div>
-    <p>Sign in with your YouTube Google account and tap <strong>Allow</strong></p>
+    <p>Sign in with the Google account that owns your YouTube channel, and tap <strong>Allow</strong>.</p>
   </div>
 
   <div class="step">
     <div class="num">3</div>
-    <p>Google will show you a code — copy it and paste it below</p>
+    <p>Google sends you right back here automatically — no codes to copy. You're done!</p>
   </div>
-
-  <form method="POST" action="/youtube-auth/connect">
-    <textarea name="code" rows="3" placeholder="Paste the code from Google here..."></textarea>
-    <button type="submit" class="btn" style="margin-top:12px">✅ Connect YouTube</button>
-  </form>
   {% endif %}
 </div>
 </body>
