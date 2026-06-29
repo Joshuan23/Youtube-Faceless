@@ -198,9 +198,13 @@ class Pipeline:
     def _step_audio(self, video_id: int) -> int:
         logger.info("[2/5] Generating voiceover…")
         video = self.db.get_video(video_id)
-        script_path = video["script_path"]
+        script_path = video.get("script_path") or ""
+        if not script_path or not Path(script_path).exists():
+            raise RuntimeError(f"Script file missing: {script_path}. Re-run from script step.")
         with open(script_path) as f:
-            text = f.read()
+            text = f.read().strip()
+        if not text:
+            raise RuntimeError("Script is empty — LLM returned blank content. Retry to regenerate.")
 
         slug = _slugify(video["title"] or video["topic"])
         audio_dir = OUTPUT_ROOT / "audio"

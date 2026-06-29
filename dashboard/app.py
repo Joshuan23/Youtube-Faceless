@@ -196,10 +196,11 @@ def api_retry(video_id):
 
 @app.route("/api/run-all", methods=["POST"])
 def api_run_all():
-    """Kick off full pipeline for every non-uploaded video."""
+    """Kick off full pipeline for every non-uploaded video, staggered to avoid rate limits."""
+    import time as _time
     all_videos = db.list_videos(limit=100)
     skipped_statuses = {"uploaded", "uploading"}
-    count = 0
+    queue = []
     for video in all_videos:
         vid_id = video["id"]
         status = video.get("status") or "pending"
@@ -212,9 +213,12 @@ def api_run_all():
         if not topic:
             continue
         _jobs[vid_id] = "running"
-        count += 1
+        queue.append((vid_id, topic, niche))
 
-        def _do(v_id=vid_id, t=topic, n=niche):
+    def _run_queue(items):
+        for idx, (v_id, t, n) in enumerate(items):
+            if idx > 0:
+                _time.sleep(8)  # 8s gap between starts — avoids Groq rate limits
             try:
                 from src.pipeline import Pipeline
                 p = Pipeline(skip_upload=False, dry_run=False, speed_mode=True)
@@ -225,9 +229,8 @@ def api_run_all():
                 _jobs[v_id] = f"error: {e}"
                 db.update_video(v_id, status="error")
 
-        threading.Thread(target=_do, daemon=True).start()
-
-    return jsonify({"ok": True, "count": count})
+    threading.Thread(target=_run_queue, args=(queue,), daemon=True).start()
+    return jsonify({"ok": True, "count": len(queue)})
 
 
 @app.route("/api/stats")
