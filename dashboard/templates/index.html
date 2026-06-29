@@ -419,10 +419,14 @@ async function runAllPending(btn) {
   btn.disabled = true; btn.textContent = '⏳ Starting all…';
   const r = await fetch('/api/run-all', {method:'POST'});
   const d = await r.json();
-  btn.textContent = `✓ Started ${d.count} videos`;
+  btn.textContent = `✓ Started ${d.count} videos — watching for updates…`;
   btn.style.background = '#238636'; btn.style.color = '#fff';
-  setTimeout(() => location.reload(), 2000);
+  setTimeout(() => location.reload(), 2500);
 }
+
+// Auto-resume polling for any jobs still running from before page load
+{% for v in videos %}{% if jobs.get(v.id) == 'running' %}pollRow({{ v.id }});
+{% endif %}{% endfor %}
 </script>
 </body>
 </html>

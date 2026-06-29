@@ -1,4 +1,4 @@
-"""Main orchestration pipeline: topic → script → voice → video → thumbnail → upload."""
+"""Main orchestration pipeline: topic → script → voice → thumbnail → video → upload."""
 
 import os
 import logging
@@ -12,7 +12,6 @@ from .database import Database
 from .topics import get_trending_topics
 from .script_generator import ScriptGenerator, SECTION_TEMPLATES
 from .voiceover import generate_chunked
-from .video_creator import VideoCreator
 from .thumbnail import ThumbnailCreator
 from .seo import SEOOptimizer
 from .uploader import YouTubeUploader
@@ -43,120 +42,80 @@ class Pipeline:
         self.db = Database()
         self.skip_upload = skip_upload
         self.dry_run = dry_run
-        self.speed_mode = speed_mode  # 4-min video, fast model, background upload
-        self.progress: dict = {}      # {video_id: {"step": str, "pct": int}}
-        self._script_gen = None
-        self._seo = None
-        self._voice_gen = None
-        self._video_creator = None
-        self._thumbnail = None
-        self._uploader = None
-
-    # ── Lazy-loaded components ──────────────────────────────────────────────
-
-    @property
-    def script_gen(self):
-        if not self._script_gen:
-            self._script_gen = ScriptGenerator()
-        return self._script_gen
-
-    @property
-    def seo(self):
-        if not self._seo:
-            self._seo = SEOOptimizer()
-        return self._seo
-
-    @property
-    def thumbnail(self):
-        if not self._thumbnail:
-            self._thumbnail = ThumbnailCreator()
-        return self._thumbnail
-
-    @property
-    def uploader(self):
-        if not self._uploader:
-            self._uploader = YouTubeUploader()
-        return self._uploader
-
-    # ── Main entrypoints ────────────────────────────────────────────────────
+        self.speed_mode = speed_mode
+        self.progress: dict = {}  # {video_id: {"step": str, "pct": int}}
 
     def _progress(self, video_id: int, step: str, pct: int):
         self.progress[video_id] = {"step": step, "pct": pct}
+        logger.info("[%3d%%] %s", pct, step)
 
     def run_topic(self, topic: str, niche: str = None, video_id: int = None) -> int:
-        """Produce and upload a single video for a given topic. Returns video DB id."""
+        """Produce and upload a single video. Returns video DB id."""
         niche = niche or self.config["channel"]["niche"]
-        logger.info("▶ Pipeline start | niche=%s | topic=%s | speed=%s", niche, topic, self.speed_mode)
-
         video_id = video_id or self.db.create_video(topic, niche)
+
+        # Clear stale error from any previous attempt
+        self.db.update_video(video_id, last_error=None)
         self._progress(video_id, "Starting…", 0)
+        logger.info("▶ START video=%d niche=%s speed=%s topic=%s", video_id, niche, self.speed_mode, topic)
 
         try:
-            self._progress(video_id, "Writing script…", 5)
-            video_id = self._step_script(video_id, topic, niche)
+            self._progress(video_id, "Writing script…", 10)
+            self._step_script(video_id, topic, niche)
+
             if not self.dry_run:
-                if self.speed_mode:
-                    # Audio + thumbnail in parallel — saves the thumbnail time
-                    self._progress(video_id, "Generating audio & thumbnail…", 35)
-                    from concurrent.futures import ThreadPoolExecutor
-                    with ThreadPoolExecutor(max_workers=2) as ex:
-                        af = ex.submit(self._step_audio, video_id)
-                        tf = ex.submit(self._step_thumbnail, video_id)
-                        af.result()
-                        tf.result()
-                else:
-                    self._progress(video_id, "Generating voiceover…", 35)
-                    video_id = self._step_audio(video_id)
-                    self._progress(video_id, "Creating thumbnail…", 60)
-                    video_id = self._step_thumbnail(video_id)
-                self._progress(video_id, "Assembling video…", 70)
-                video_id = self._step_video(video_id)
+                self._progress(video_id, "Generating voiceover…", 30)
+                self._step_audio(video_id)
+
+                self._progress(video_id, "Creating thumbnail…", 55)
+                self._step_thumbnail(video_id)
+
+                self._progress(video_id, "Assembling video…", 65)
+                self._step_video(video_id)
+
+                if not self.skip_upload:
+                    self._progress(video_id, "Uploading to YouTube…", 85)
+                    self._step_upload(video_id)
             else:
-                self._progress(video_id, "Creating thumbnail…", 60)
-                video_id = self._step_thumbnail(video_id)
-            if not self.skip_upload and not self.dry_run:
-                self._progress(video_id, "Uploading to YouTube…", 85)
-                video_id = self._step_upload(video_id)
+                self._progress(video_id, "Creating thumbnail…", 70)
+                self._step_thumbnail(video_id)
+
         except Exception as e:
-            self.db.update_video(video_id, status="error", last_error=str(e))
-            self._progress(video_id, f"Error: {e}", -1)
-            logger.error("Pipeline failed for video %d: %s", video_id, e)
+            err = str(e)
+            self.db.update_video(video_id, status="error", last_error=err)
+            self._progress(video_id, f"Error: {err}", -1)
+            logger.error("✗ FAILED video=%d: %s", video_id, err, exc_info=True)
             raise
 
         self._progress(video_id, "Done!", 100)
-        logger.info("✓ Pipeline complete | video_id=%d", video_id)
+        logger.info("✓ DONE video=%d", video_id)
         return video_id
 
     def run_batch(self, count: int = 1, niche: str = None) -> list[int]:
-        """Produce `count` videos using trending topics."""
         niche = niche or self.config["channel"]["niche"]
         topics = get_trending_topics(niche, count=count)
         ids = []
         for topic in topics[:count]:
             try:
-                vid_id = self.run_topic(topic, niche)
-                ids.append(vid_id)
+                ids.append(self.run_topic(topic, niche))
             except Exception as e:
                 logger.error("Batch item failed: %s | %s", topic, e)
         return ids
 
-    # ── Steps ───────────────────────────────────────────────────────────────
+    # ── Steps ──────────────────────────────────────────────────────────────
 
-    def _step_script(self, video_id: int, topic: str, niche: str) -> int:
+    def _step_script(self, video_id: int, topic: str, niche: str):
         import json
-        from concurrent.futures import ThreadPoolExecutor
-
-        logger.info("[1/5] Generating script… (speed=%s)", self.speed_mode)
         self.db.update_video(video_id, status="scripting")
 
+        script_gen = ScriptGenerator()
+        seo_opt = SEOOptimizer()
+
         if self.speed_mode:
-            # Single fast call (~5s) + instant SEO (0s)
-            script_data = self.script_gen.generate_speed(topic, niche)
-            seo_data    = self.seo.generate_speed(script_data)
+            script_data = script_gen.generate_speed(topic, niche)
+            seo_data    = seo_opt.generate_speed(script_data)
         else:
-            # Phase 1 — meta only (~3s)
-            meta = self.script_gen.generate_meta(topic, niche)
-            # Phase 2 — full script + SEO in parallel (~20s)
+            meta = script_gen.generate_meta(topic, niche)
             section_names = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["personal_finance"])
             seo_input = {
                 "topic": topic, "niche": niche,
@@ -164,22 +123,26 @@ class Pipeline:
                 "key_takeaways": meta.get("key_takeaways", []),
                 "sections": [{"name": s} for s in section_names],
             }
+            from concurrent.futures import ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=2) as ex:
-                script_future = ex.submit(self.script_gen.generate_script_text, topic, niche)
-                seo_future    = ex.submit(self.seo.generate, seo_input)
-                full_script   = script_future.result()
-                seo_data      = seo_future.result()
-            script_data = self.script_gen.build_result(meta, full_script, topic, niche)
+                sf = ex.submit(script_gen.generate_script_text, topic, niche)
+                ef = ex.submit(seo_opt.generate, seo_input)
+                full_script_text = sf.result()
+                seo_data = ef.result()
+            script_data = script_gen.build_result(meta, full_script_text, topic, niche)
 
         title       = seo_data.get("recommended_title") or script_data.get("title") or topic
-        description = self.seo.build_full_description(seo_data)
+        description = seo_opt.build_full_description(seo_data)
         tags        = seo_data.get("tags", [])
+        full_script = script_data.get("full_script", "").strip()
+
+        if not full_script:
+            raise RuntimeError("LLM returned an empty script — retry to regenerate.")
 
         slug = _slugify(title)
         scripts_dir = OUTPUT_ROOT / "scripts"
         scripts_dir.mkdir(parents=True, exist_ok=True)
         script_path = str(scripts_dir / f"{slug}.txt")
-        full_script = script_data.get("full_script", "")
         with open(script_path, "w") as f:
             f.write(full_script)
 
@@ -192,42 +155,61 @@ class Pipeline:
             title=title, description=description,
             tags=json.dumps(tags), script_path=script_path,
         )
-        logger.info("Script saved: %s", script_path)
-        return video_id
+        logger.info("[1/5] Script: %s (%d words)", script_path, len(full_script.split()))
 
-    def _step_audio(self, video_id: int) -> int:
-        logger.info("[2/5] Generating voiceover…")
+    def _step_audio(self, video_id: int):
         video = self.db.get_video(video_id)
         script_path = video.get("script_path") or ""
-        if not script_path or not Path(script_path).exists():
-            raise RuntimeError(f"Script file missing: {script_path}. Re-run from script step.")
-        with open(script_path) as f:
-            text = f.read().strip()
-        if not text:
-            raise RuntimeError("Script is empty — LLM returned blank content. Retry to regenerate.")
 
-        slug = _slugify(video["title"] or video["topic"])
+        if not script_path or not Path(script_path).exists():
+            raise RuntimeError(f"Script file missing — retry from scratch. (path: {script_path})")
+
+        text = Path(script_path).read_text().strip()
+        if not text:
+            raise RuntimeError("Script file is empty — retry to regenerate.")
+
+        slug = _slugify(video.get("title") or video.get("topic") or "video")
         audio_dir = OUTPUT_ROOT / "audio"
         audio_path = generate_chunked(text, str(audio_dir), slug)
 
-        self.db.update_video(video_id, audio_path=audio_path, status="voiced")
-        return video_id
+        if not Path(audio_path).exists():
+            raise RuntimeError(f"Audio was not created — edge-tts may have failed. Path: {audio_path}")
 
-    def _step_video(self, video_id: int) -> int:
-        logger.info("[3/5] Assembling video…")
-        import subprocess, tempfile
+        self.db.update_video(video_id, audio_path=audio_path, status="voiced")
+        logger.info("[2/5] Audio: %s", audio_path)
+
+    def _step_thumbnail(self, video_id: int):
         video = self.db.get_video(video_id)
-        audio_path = video["audio_path"]
+        title = video.get("title") or video.get("topic") or "WealthFlow"
+        topic = video.get("topic") or title
+        slug  = _slugify(title)
+        thumb_dir = OUTPUT_ROOT / "thumbnails"
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        thumb_path = str(thumb_dir / f"{slug}_thumb.jpg")
+
+        ThumbnailCreator().create(title, topic, thumb_path, variant=video_id % 5)
+
+        if not Path(thumb_path).exists():
+            raise RuntimeError(f"Thumbnail was not created. Path: {thumb_path}")
+
+        self.db.update_video(video_id, thumb_path=thumb_path, status="thumbnailed")
+        logger.info("[3/5] Thumbnail: %s", thumb_path)
+
+    def _step_video(self, video_id: int):
+        video = self.db.get_video(video_id)
+        audio_path = video.get("audio_path") or ""
         thumb_path = video.get("thumb_path") or ""
         title = video.get("title") or video.get("topic") or "WealthFlow"
         niche = video.get("niche") or "personal_finance"
+        topic = video.get("topic") or title
+
+        if not audio_path or not Path(audio_path).exists():
+            raise RuntimeError(f"Audio file missing before video assembly: {audio_path}")
+
         slug = _slugify(title)
         video_dir = OUTPUT_ROOT / "videos"
         video_dir.mkdir(parents=True, exist_ok=True)
         output_path = str(video_dir / f"{slug}.mp4")
-
-        if not audio_path or not Path(audio_path).exists():
-            raise RuntimeError(f"Audio file missing: {audio_path}")
 
         try:
             import imageio_ffmpeg
@@ -236,39 +218,31 @@ class Pipeline:
             import shutil
             ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
 
-        # Try stock footage first
         from .stock_video import get_clips
-        clips_dir = str(OUTPUT_ROOT / "clips" / slug)
-        clips = get_clips(video.get("topic") or title, niche, count=4, output_dir=clips_dir)
+        clips = get_clips(topic, niche, count=4, output_dir=str(OUTPUT_ROOT / "clips" / slug))
 
         if clips:
-            output_path = self._make_footage_video(
-                ffmpeg, clips, audio_path, title, output_path
-            )
+            output_path = self._make_footage_video(ffmpeg, clips, audio_path, title, output_path)
         else:
-            output_path = self._make_static_video(
-                ffmpeg, thumb_path, audio_path, output_path
-            )
+            output_path = self._make_static_video(ffmpeg, thumb_path, audio_path, output_path)
 
+        if not Path(output_path).exists():
+            raise RuntimeError(f"Video file not found after ffmpeg: {output_path}")
+
+        size_mb = Path(output_path).stat().st_size / 1_000_000
         self.db.update_video(video_id, video_path=output_path, status="produced")
-        return video_id
+        logger.info("[4/5] Video: %s (%.1f MB)", output_path, size_mb)
 
     def _make_footage_video(self, ffmpeg: str, clips: list, audio_path: str,
                             title: str, output_path: str) -> str:
-        """Combine stock clips + audio into a class-style educational video."""
-        import subprocess, tempfile, os
-
-        # Write concat list — repeat clips 6× to ensure longer than any audio
+        import subprocess
         concat_path = output_path.replace(".mp4", "_concat.txt")
         with open(concat_path, "w") as f:
-            for _ in range(6):
+            for _ in range(8):
                 for clip in clips:
                     f.write(f"file '{clip}'\n")
 
-        # Escape title for ffmpeg drawtext
         safe_title = title.replace("'", "").replace(":", " -").replace("\\", "")[:55]
-
-        # Find a font for text overlay
         font_candidates = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
@@ -280,18 +254,13 @@ class Pipeline:
             vf = (
                 "scale=1280:720:force_original_aspect_ratio=increase,"
                 "crop=1280:720,"
-                # Dark overlay strip at bottom
-                "drawbox=x=0:y=h-75:w=iw:h=75:color=black@0.75:t=fill,"
+                "drawbox=x=0:y=h-80:w=iw:h=80:color=black@0.8:t=fill,"
                 f"drawtext=fontfile='{font_path}':"
                 f"text='{safe_title}':"
-                "fontsize=30:fontcolor=white:"
-                "x=(w-text_w)/2:y=h-55"
+                "fontsize=28:fontcolor=white:x=(w-text_w)/2:y=h-57"
             )
         else:
-            vf = (
-                "scale=1280:720:force_original_aspect_ratio=increase,"
-                "crop=1280:720"
-            )
+            vf = "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720"
 
         cmd = [
             ffmpeg, "-y",
@@ -299,102 +268,87 @@ class Pipeline:
             "-i", audio_path,
             "-vf", vf,
             "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-            "-c:a", "aac", "-b:a", "96k",
-            "-pix_fmt", "yuv420p",
-            "-threads", "0",
-            "-shortest",
+            "-c:a", "aac", "-b:a", "128k",
+            "-pix_fmt", "yuv420p", "-threads", "0", "-shortest",
             output_path,
         ]
-        logger.info("Building footage video…")
         result = subprocess.run(cmd, capture_output=True, timeout=600)
-
-        # Clean up concat file
         try:
             Path(concat_path).unlink()
         except Exception:
             pass
 
         if result.returncode != 0:
-            err = result.stderr.decode("utf-8", errors="replace")[-600:]
-            logger.warning("Footage video failed (%s), falling back to static", err[-100:])
-            # Fall back to static image
+            err = result.stderr.decode("utf-8", errors="replace")[-300:]
+            logger.warning("Footage video failed (%s) — falling back to static", err[-80:])
             return self._make_static_video(ffmpeg, "", audio_path, output_path)
 
-        logger.info("Footage video done: %s", output_path)
         return output_path
 
     def _make_static_video(self, ffmpeg: str, thumb_path: str,
                            audio_path: str, output_path: str) -> str:
-        """Fallback: static thumbnail image + audio."""
         import subprocess
         if thumb_path and Path(thumb_path).exists():
             img_args = ["-loop", "1", "-r", "1", "-i", thumb_path]
         else:
-            img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1920x1080:r=1"]
+            img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1280x720:r=1"]
 
         cmd = (
-            [ffmpeg, "-y"] + img_args
-            + ["-i", audio_path,
-               "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage",
-               "-c:a", "copy", "-pix_fmt", "yuv420p", "-shortest", output_path]
+            [ffmpeg, "-y"] + img_args +
+            ["-i", audio_path,
+             "-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage",
+             "-c:a", "aac", "-b:a", "128k",
+             "-pix_fmt", "yuv420p", "-shortest", output_path]
         )
         result = subprocess.run(cmd, capture_output=True, timeout=300)
         if result.returncode != 0:
             err = result.stderr.decode("utf-8", errors="replace")[-600:]
-            raise RuntimeError(f"ffmpeg rc={result.returncode}: {err}")
+            raise RuntimeError(f"ffmpeg static video failed (rc={result.returncode}): {err[-200:]}")
         return output_path
-
-    def _step_thumbnail(self, video_id: int) -> int:
-        logger.info("[4/5] Creating thumbnail…")
-        video = self.db.get_video(video_id)
-        title = video["title"] or video["topic"]
-        slug = _slugify(title)
-        thumb_dir = OUTPUT_ROOT / "thumbnails"
-        thumb_path = str(thumb_dir / f"{slug}_thumb_v1.jpg")
-
-        self.thumbnail.create(title, video["topic"], thumb_path, variant=video_id % 5)
-        self.db.update_video(video_id, thumb_path=thumb_path, status="thumbnailed")
-        return video_id
 
     def _do_upload(self, video_id: int):
         import json as _json
+        video = self.db.get_video(video_id)
+        if not video:
+            raise RuntimeError(f"Video {video_id} not found in DB")
+
+        video_path = video.get("video_path") or ""
+        if not video_path or not Path(video_path).exists():
+            raise RuntimeError(
+                "Video file is missing (server restarted, files cleared). Click ↺ Run to rebuild."
+            )
+
         try:
-            video = self.db.get_video(video_id)
-            if not video:
-                raise RuntimeError(f"Video {video_id} not found in DB")
-            video_path = video.get("video_path") or ""
-            if not video_path or not Path(video_path).exists():
-                raise RuntimeError(
-                    "Video file missing — server restarted. Click Retry to rebuild."
-                )
-            tags = _json.loads(video["tags"]) if video["tags"] else []
-            result = self.uploader.upload(
-                video_path=video_path,
-                title=video["title"] or video["topic"],
-                description=video["description"] or video["topic"],
-                tags=tags,
-                thumbnail_path=video["thumb_path"],
-                niche=video["niche"],
-            )
-            self.db.update_video(
-                video_id,
-                youtube_id=result["youtube_id"],
-                youtube_url=result["youtube_url"],
-                uploaded_at=datetime.utcnow().isoformat(),
-                status="uploaded",
-                last_error=None,
-            )
-            self._progress(video_id, "Uploaded!", 100)
-            logger.info("Published: %s", result["youtube_url"])
+            tags = _json.loads(video["tags"]) if video.get("tags") else []
+        except Exception:
+            tags = []
+
+        result = YouTubeUploader().upload(
+            video_path=video_path,
+            title=(video.get("title") or video.get("topic") or "Video")[:100],
+            description=(video.get("description") or video.get("topic") or "")[:5000],
+            tags=tags,
+            thumbnail_path=video.get("thumb_path") or "",
+            niche=video.get("niche") or "personal_finance",
+        )
+        self.db.update_video(
+            video_id,
+            youtube_id=result["youtube_id"],
+            youtube_url=result["youtube_url"],
+            uploaded_at=datetime.utcnow().isoformat(),
+            status="uploaded",
+            last_error=None,
+        )
+        self._progress(video_id, "Uploaded to YouTube!", 100)
+        logger.info("[5/5] Published: %s", result["youtube_url"])
+
+    def _step_upload(self, video_id: int):
+        self.db.update_video(video_id, status="uploading")
+        try:
+            self._do_upload(video_id)
         except Exception as e:
             err = str(e)
-            logger.error("Upload failed for video %d: %s", video_id, err)
             self.db.update_video(video_id, status="error", last_error=err)
-            self._progress(video_id, f"Error: {err}", -1)
+            self._progress(video_id, f"Upload failed: {err}", -1)
+            logger.error("[5/5] Upload FAILED video=%d: %s", video_id, err)
             raise
-
-    def _step_upload(self, video_id: int) -> int:
-        logger.info("[5/5] Uploading to YouTube…")
-        self.db.update_video(video_id, status="uploading")
-        self._do_upload(video_id)
-        return video_id
