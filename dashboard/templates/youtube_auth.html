@@ -51,6 +51,45 @@
 
   <a href="/" class="btn green">← Back to Dashboard</a>
 
+  {% elif needs_setup %}
+  <h2>⚙️ One-time setup: YouTube API key</h2>
+  <div class="error" style="background:#2d2a10;border-color:var(--gold);color:var(--gold)">
+    Before you can connect, you need a free Google OAuth file
+    (<code>client_secrets.json</code>). This is a 5-minute one-time step.
+  </div>
+
+  <div class="step">
+    <div class="num">1</div>
+    <p>Go to <a href="https://console.cloud.google.com/projectcreate" target="_blank" style="color:var(--gold)">console.cloud.google.com</a>
+       and create a new project (any name).</p>
+  </div>
+  <div class="step">
+    <div class="num">2</div>
+    <p>In the search bar type <strong>YouTube Data API v3</strong>, open it, and click <strong>Enable</strong>.</p>
+  </div>
+  <div class="step">
+    <div class="num">3</div>
+    <p>Go to <strong>APIs &amp; Services → OAuth consent screen</strong>. Choose <strong>External</strong>,
+       fill in the app name + your email, and under <strong>Test users</strong> add your own Google email.</p>
+  </div>
+  <div class="step">
+    <div class="num">4</div>
+    <p>Go to <strong>Credentials → Create Credentials → OAuth client ID</strong>.
+       Choose application type <strong>Desktop app</strong> and click Create.</p>
+  </div>
+  <div class="step">
+    <div class="num">5</div>
+    <p>Click <strong>Download JSON</strong>. Rename the file to exactly
+       <code>client_secrets.json</code>.</p>
+  </div>
+  <div class="step">
+    <div class="num">6</div>
+    <p>In Replit, open the <code>credentials/</code> folder and upload
+       <code>client_secrets.json</code> there. Then come back and refresh this page.</p>
+  </div>
+
+  <a href="/youtube-auth" class="btn">↻ I've uploaded it — refresh</a>
+
   {% elif error %}
   <div class="error">❌ Error: {{ error }}<br><br>Make sure you copied the full code from Google.</div>
   <a href="/youtube-auth" class="btn">Try Again</a>

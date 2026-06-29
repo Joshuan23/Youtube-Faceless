@@ -332,9 +332,11 @@ def healthz():
 @app.route("/youtube-auth")
 def youtube_auth():
     secrets = Path(__file__).parent.parent / "credentials" / "client_secrets.json"
-    if not secrets.exists():
-        return ("<h2 style='font-family:sans-serif;color:red'>client_secrets.json not found."
-                " Upload it to the credentials/ folder first.</h2>"), 400
+    if not secrets.exists() or secrets.stat().st_size == 0:
+        # No OAuth client config yet — show the one-time Google Cloud setup guide
+        return render_template("youtube_auth.html",
+            auth_url=None, connected=False, error=None,
+            success=False, needs_setup=True)
     try:
         from google_auth_oauthlib.flow import InstalledAppFlow
         flow = InstalledAppFlow.from_client_secrets_file(
@@ -344,11 +346,13 @@ def youtube_auth():
         auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
         _yt_flow["flow"] = flow
     except Exception as e:
-        return f"<h2>Error: {e}</h2>", 500
+        return render_template("youtube_auth.html",
+            auth_url=None, connected=False, error=str(e),
+            success=False, needs_setup=False)
     return render_template("youtube_auth.html",
         auth_url=auth_url,
         connected=_yt_token_path().exists(),
-        error=None, success=False)
+        error=None, success=False, needs_setup=False)
 
 
 @app.route("/youtube-auth/connect", methods=["POST"])
