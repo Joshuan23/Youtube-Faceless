@@ -121,6 +121,15 @@
   <a href="{{ auth_url }}" class="btn">🔑 Sign in with Google</a>
   {% endif %}
 
+  {% if client_hint %}
+  <p style="color:var(--muted);font-size:.75rem;margin-top:10px">
+    Using OAuth client: <code style="word-break:break-all">{{ client_hint }}</code><br>
+    <span style="color:#777">If you get <strong>deleted_client</strong>, this ID no longer exists in Google Cloud —
+    upload the JSON from your current client and redeploy. If it says <strong>DESKTOP</strong>,
+    recreate it as a <strong>Web application</strong>.</span>
+  </p>
+  {% endif %}
+
   <div class="step" style="margin-top:24px">
     <div class="num">2</div>
     <p>Sign in with the Google account that owns your YouTube channel, and tap <strong>Allow</strong>.</p>

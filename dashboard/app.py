@@ -338,18 +338,47 @@ def _redirect_uri():
     return f"https://{host}/youtube-auth/callback"
 
 
+def _client_config():
+    """Load OAuth client config from env var (preferred) or file. Returns (dict|None, source)."""
+    import json as _json
+    raw = os.getenv("GOOGLE_CLIENT_SECRETS")
+    if raw:
+        try:
+            return _json.loads(raw), "Replit Secret"
+        except Exception:
+            pass
+    secrets = Path(__file__).parent.parent / "credentials" / "client_secrets.json"
+    if secrets.exists() and secrets.stat().st_size > 0:
+        try:
+            return _json.loads(secrets.read_text()), "credentials file"
+        except Exception:
+            pass
+    return None, None
+
+
+def _client_hint(cfg, source):
+    """A short, safe description of which OAuth client is loaded."""
+    if not cfg:
+        return None
+    block = cfg.get("web") or cfg.get("installed") or {}
+    cid = block.get("client_id", "")
+    kind = "web" if "web" in cfg else ("installed/DESKTOP" if "installed" in cfg else "unknown")
+    short = (cid[:18] + "…" + cid[-12:]) if len(cid) > 32 else cid
+    return f"{short}  ({kind}, from {source})"
+
+
 @app.route("/youtube-auth")
 def youtube_auth():
-    secrets = Path(__file__).parent.parent / "credentials" / "client_secrets.json"
-    if not secrets.exists() or secrets.stat().st_size == 0:
+    cfg, source = _client_config()
+    if not cfg:
         # No OAuth client config yet — show the one-time Google Cloud setup guide
         return render_template("youtube_auth.html",
             auth_url=None, connected=False, error=None,
             success=False, needs_setup=True, redirect_uri=_redirect_uri())
     try:
         from google_auth_oauthlib.flow import Flow
-        flow = Flow.from_client_secrets_file(
-            str(secrets), scopes=YT_SCOPES, redirect_uri=_redirect_uri()
+        flow = Flow.from_client_config(
+            cfg, scopes=YT_SCOPES, redirect_uri=_redirect_uri()
         )
         auth_url, state = flow.authorization_url(
             prompt="consent", access_type="offline", include_granted_scopes="true"
@@ -359,11 +388,13 @@ def youtube_auth():
     except Exception as e:
         return render_template("youtube_auth.html",
             auth_url=None, connected=False, error=str(e),
-            success=False, needs_setup=False, redirect_uri=_redirect_uri())
+            success=False, needs_setup=False, redirect_uri=_redirect_uri(),
+            client_hint=_client_hint(cfg, source))
     return render_template("youtube_auth.html",
         auth_url=auth_url,
         connected=_yt_token_path().exists(),
-        error=None, success=False, needs_setup=False, redirect_uri=_redirect_uri())
+        error=None, success=False, needs_setup=False, redirect_uri=_redirect_uri(),
+        client_hint=_client_hint(cfg, source))
 
 
 @app.route("/youtube-auth/callback")
