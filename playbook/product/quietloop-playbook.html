@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Quietloop Playbook — 10 AI Automation Blueprints</title>
+<style>
+:root {
+  --bg: #FDFDFB; --ink: #18231E; --muted: #57655C; --line: #DCE3DC;
+  --accent: #17714A; --code-bg: #0E1411; --code-text: #C4D6C9; --code-green: #4ADE8C;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 1.03rem; line-height: 1.65;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; }
+h1 { font-size: 2.2rem; line-height: 1.1; letter-spacing: -0.02em; margin: 12px 0 8px; }
+.sub { color: var(--muted); font-size: 1.1rem; margin-bottom: 8px; }
+.kicker {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent);
+}
+hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 40px 0 12px; }
+h3 { font-size: 1.05rem; margin: 26px 0 8px; }
+p, ul, ol { margin-bottom: 14px; }
+ul, ol { padding-left: 22px; }
+li { margin-bottom: 6px; }
+strong { font-weight: 650; }
+a { color: var(--accent); }
+.bp {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 28px 28px 22px; margin: 28px 0;
+}
+.bp-head { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+.bp h2 { margin: 4px 0 10px; }
+.roi {
+  font-family: var(--mono); font-size: 0.75rem; color: var(--accent);
+  white-space: nowrap; border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px;
+}
+.stack {
+  font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+  margin-bottom: 14px; letter-spacing: 0.02em;
+}
+pre {
+  background: var(--code-bg); color: var(--code-text);
+  font-family: var(--mono); font-size: 0.78rem; line-height: 1.55;
+  padding: 18px; border-radius: 8px; overflow-x: auto; margin: 12px 0 16px;
+  white-space: pre-wrap;
+}
+pre b { color: var(--code-green); font-weight: 600; }
+.guard {
+  border-left: 3px solid var(--accent); padding: 4px 0 4px 16px;
+  color: var(--muted); font-size: 0.95rem; margin: 14px 0 4px;
+}
+.guard strong { color: var(--ink); }
+table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.toc { columns: 2; column-gap: 40px; font-size: 0.97rem; }
+@media (max-width: 600px) { .toc { columns: 1; } }
+@media print { .bp { break-inside: avoid; } body { font-size: 10.5pt; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="kicker">Quietloop · Playbook · v1.0 · 2026</p>
+<h1>The Quietloop Playbook</h1>
+<p class="sub">10 AI automation blueprints that give a small service business its week back. Copy, paste, deploy — no code required.</p>
+
+<hr>
+
+<h2>How to use this playbook</h2>
+<p>Each blueprint is a complete recipe: what it does, what it saves, the tools to connect, the exact production prompt, and the guardrails that keep it from embarrassing you. They're ordered by payback speed — Blueprint 1 is where most businesses should start.</p>
+<p>You need three things, all with free-or-cheap tiers:</p>
+<ol>
+  <li><strong>An automation platform</strong> — <a href="https://make.com">Make</a> (best value), Zapier (easiest), or n8n (self-hosted, cheapest at scale). Every blueprint says "Make" but translates 1:1.</li>
+  <li><strong>A Claude API key</strong> — <a href="https://console.anthropic.com">console.anthropic.com</a>. Every blueprint's brain is one API call. Budget $20–60/month for all ten running.</li>
+  <li><strong>Your existing tools</strong> — Gmail, Stripe/Xero, your CRM, Slack. The blueprints glue them together; nothing gets replaced.</li>
+</ol>
+
+<h3>The four golden rules</h3>
+<ol>
+  <li><strong>Approval gates first.</strong> Anywhere money moves or a customer is addressed, the agent drafts and a human clicks send — until 30 days pass without an edit. Then, and only then, remove the gate.</li>
+  <li><strong>Log everything.</strong> Every blueprint ends with "append a row to a log sheet." When something feels off, you want a paper trail, not vibes.</li>
+  <li><strong>One blueprint at a time.</strong> Deploy, run for two weeks, trust it, then add the next. Ten half-watched automations are worse than three trusted ones.</li>
+  <li><strong>Write the tone card once.</strong> Fill in the voice block below and paste it into every prompt where it says <b>{{TONE_CARD}}</b>. This is what makes the output sound like you and not like a robot.</li>
+</ol>
+
+<pre>
+TONE CARD (fill in once, reuse everywhere)
+Company: {{name}} — {{one-line description}}
+We sound: {{e.g. warm, direct, no exclamation marks, no corporate filler}}
+We never: {{e.g. apologize twice, use "circle back", promise dates we can't keep}}
+Sign-off: {{e.g. "— Sam at Quietloop"}}
+</pre>
+
+<h2>The blueprints</h2>
+<ol class="toc">
+  <li>Inbound lead responder</li>
+  <li>Invoice chaser</li>
+  <li>Weekly report writer</li>
+  <li>Shared inbox triage</li>
+  <li>Meeting notes → CRM</li>
+  <li>Proposal generator</li>
+  <li>Client onboarding autopilot</li>
+  <li>Review &amp; testimonial collector</li>
+  <li>Content repurposer</li>
+  <li>Churn-risk radar</li>
+</ol>
+
+<!-- ============ 1 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 01</p><span class="roi">~9 hrs/week · payback: week 1</span></div>
+  <h2>Inbound lead responder</h2>
+  <p class="stack">make · claude api · gmail · calendly · sheets/crm</p>
+  <p><strong>What it does:</strong> every new inbound lead gets a researched, personalized reply within 5 minutes, then up to four polite follow-ups until they book a call or bow out. Speed-to-lead is the single highest-leverage sales number a small firm controls: replying in 5 minutes vs. 24 hours routinely doubles contact rates.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Trigger:</strong> Make watches your lead source — a form webhook, a "New email matching filter" on sales@, or a CRM "contact created" event.</li>
+    <li><strong>Research step:</strong> HTTP module fetches the lead's company homepage (from their email domain). Pass the raw HTML text to Claude along with the lead's message.</li>
+    <li><strong>Claude call:</strong> use the prompt below. It returns a JSON block: a lead score, a reply draft, and a one-line rationale.</li>
+    <li><strong>Gate:</strong> score ≥ 7 → create a Gmail draft (or send, once trusted) with your Calendly link. Score &lt; 7 → send a courteous default reply, no calendar link.</li>
+    <li><strong>Follow-up loop:</strong> Make scenario runs daily; if no reply after 2, 5, 9, and 14 days, Claude writes a short bump referencing the original note. Stop on any reply.</li>
+    <li><strong>Log:</strong> append lead, score, and outcome to a sheet. This becomes your conversion data.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You are the first-response assistant for {{TONE_CARD}}.
+
+A new lead just arrived. Their message: <b>{{lead_message}}</b>
+Their company's website text: <b>{{scraped_homepage}}</b>
+What we sell: {{your one-paragraph offer}}
+
+Return JSON only:
+{
+ "score": 1-10,  // fit: budget signals, problem match, authority
+ "rationale": "one sentence",
+ "reply": "an email reply that (1) answers their actual question,
+   (2) references ONE specific thing about their company to prove
+   a human-level read, (3) proposes a 20-min call with {{calendly_link}}.
+   Under 120 words. No bullet points. Sound like the tone card."
+}
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> approval gate on sends for the first 30 days. Never auto-reply to emails containing "unsubscribe", legal threats, or press inquiries — filter those to a human. Cap follow-ups at four, ever.</p>
+</div>
+
+<!-- ============ 2 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 02</p><span class="roi">~6 hrs/week + faster payment</span></div>
+  <h2>Invoice chaser</h2>
+  <p class="stack">make · claude api · stripe/xero/quickbooks · gmail</p>
+  <p><strong>What it does:</strong> scans your accounts receivable daily and sends escalating, human-sounding reminders for overdue invoices. Most small firms chase invoices badly because it's awkward; the agent isn't embarrassed, so the ladder actually gets climbed and cash arrives weeks earlier.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Trigger:</strong> daily 8am scenario pulls open invoices past due date from Stripe/Xero/QuickBooks.</li>
+    <li><strong>Ladder logic:</strong> router by days overdue — 3 days (gentle), 10 (direct), 20 (firm), 30 (final: fees/pause work, per your policy).</li>
+    <li><strong>Claude call:</strong> writes each reminder fresh, referencing the invoice, amount, relationship length, and rung. Templates get ignored; specific emails get paid.</li>
+    <li><strong>Reply detection:</strong> any reply to the thread stops the ladder and alerts a human — disputes and hardship are people work.</li>
+    <li><strong>Log:</strong> invoice, rung, sent date, outcome. Watch your average days-to-paid drop.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You chase invoices for {{TONE_CARD}}.
+
+Invoice: #<b>{{number}}</b>, {{amount}}, due <b>{{due_date}}</b> ({{days_overdue}} days ago)
+Client: {{client_name}}, customer for {{relationship_length}}
+Escalation rung: <b>{{rung}}</b> of 4 (1=gentle nudge, 2=direct ask,
+3=firm with consequence named, 4=final notice per policy: {{policy}})
+History: {{previous_reminders_sent}}
+
+Write the email. Rules: reference the specific invoice and amount;
+match firmness to the rung but never threaten beyond stated policy;
+one clear ask (pay via {{payment_link}} or reply if something's wrong);
+under 100 words; the relationship survives this email.
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> rungs 3–4 always behind an approval gate. Exclude clients tagged "sensitive" or in active disputes. Never chase an invoice you haven't verified is actually unpaid — sync state from the source of truth at send time, not from the morning scan.</p>
+</div>
+
+<!-- ============ 3 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 03</p><span class="roi">~5 hrs/week, every week</span></div>
+  <h2>Weekly report writer</h2>
+  <p class="stack">make · claude api · sheets · stripe · google analytics · slack</p>
+  <p><strong>What it does:</strong> every Monday at 6am, pulls the week's numbers from your tools, writes the narrative a smart analyst would write — what moved, why it probably moved, what to watch — and posts it to Slack or email before standup. Kills the Sunday-night copy-paste ritual.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Trigger:</strong> scheduled Monday 6:00.</li>
+    <li><strong>Gather:</strong> pull this week + last week + same week last quarter from each source (revenue from Stripe, traffic from GA, pipeline from CRM, delivery metrics from your PM tool). Land it all in one JSON bundle.</li>
+    <li><strong>Claude call:</strong> prompt below. Ask for anomalies explicitly — the narrative is nice, but the flags are the value.</li>
+    <li><strong>Deliver:</strong> post to #general or email the team. Include the raw numbers table under the narrative.</li>
+    <li><strong>Archive:</strong> append to a "reports" doc so history is searchable.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You write the Monday operations report for {{TONE_CARD}}.
+
+This week's data (JSON): <b>{{metrics_bundle}}</b>
+Comparison periods included: last week, same week last quarter.
+
+Write:
+1. TL;DR — three sentences max, plain language.
+2. What moved — each metric that changed >10%, with the most
+   likely cause from the data (say "likely" — don't invent certainty).
+3. Flags — anything that would worry a good COO. If nothing, say
+   "no flags" — do not manufacture concern.
+4. Watch next week — one thing.
+Keep it under 250 words. No corporate filler. Numbers formatted
+for scanning ($12.4k, not $12,401.22).
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> the agent narrates; it never decides. If a data pull fails, the report says "Stripe data unavailable this week" rather than guessing — hallucinated revenue numbers are how trust dies.</p>
+</div>
+
+<!-- ============ 4 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 04</p><span class="roi">~11 hrs/week on a busy inbox</span></div>
+  <h2>Shared inbox triage</h2>
+  <p class="stack">make · claude api · gmail/zendesk · slack</p>
+  <p><strong>What it does:</strong> reads every message hitting support@ or hello@, labels it, answers the routine ones from your FAQ, and escalates the rest to the right person <em>with a summary and suggested reply attached</em>. The escalation quality is the sleeper feature — humans handle edge cases in 2 minutes instead of 10.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Knowledge base:</strong> write your 20 most common questions and canonical answers in one doc. This is 80% of the build and worth every minute.</li>
+    <li><strong>Trigger:</strong> new email in the shared inbox.</li>
+    <li><strong>Claude call:</strong> classify → route. Categories: <em>answerable</em> (respond from KB), <em>action-needed</em> (human, with draft), <em>urgent/angry</em> (human, flagged, no draft delay), <em>spam/vendor</em> (archive).</li>
+    <li><strong>Answerable path:</strong> draft from the KB, approval gate for month one, then auto-send with a "was this helpful?" footer.</li>
+    <li><strong>Escalation path:</strong> Slack DM to the owner: summary, sentiment, suggested reply, link to thread.</li>
+    <li><strong>Log:</strong> category counts per week — this tells you what to fix upstream so the email stops arriving at all.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You triage the shared inbox for {{TONE_CARD}}.
+
+Email: from <b>{{sender}}</b>, subject "{{subject}}", body: <b>{{body}}</b>
+Knowledge base: {{kb_doc}}
+Team routing: {{e.g. billing → Dana, technical → Marcus, else → Sam}}
+
+Return JSON only:
+{
+ "category": "answerable | action_needed | urgent | spam",
+ "sentiment": "calm | frustrated | angry",
+ "summary": "one sentence, for the human who'll skim it",
+ "route_to": "person, if escalating",
+ "draft": "reply drawn ONLY from the knowledge base. If the KB
+   doesn't cover it, leave empty and set category=action_needed.
+   Never improvise an answer about money, deadlines, or policy."
+}
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> "angry" always goes to a human first-touch — an instant bot reply to a furious customer pours gasoline. The draft rule in the prompt (KB-only, no improvising) is the line between helpful and dangerous; keep it.</p>
+</div>
+
+<!-- ============ 5 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 05</p><span class="roi">~3 hrs/week + a CRM that's finally true</span></div>
+  <h2>Meeting notes → CRM</h2>
+  <p class="stack">make · claude api · fireflies/fathom · hubspot/pipedrive · gmail</p>
+  <p><strong>What it does:</strong> after every sales or client call, turns the transcript into updated CRM fields, logged next steps with owners and dates, and a recap email ready to send. The CRM stops being a graveyard of stale deals because nobody has to remember to update it.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Trigger:</strong> your notetaker (Fireflies, Fathom, Grain) fires a "transcript ready" webhook.</li>
+    <li><strong>Claude call:</strong> extract the structured record below.</li>
+    <li><strong>CRM update:</strong> map fields — deal stage, amount, close date, objections, champion — and update the matching record (match on attendee email).</li>
+    <li><strong>Tasks:</strong> create a task per action item, assigned per the transcript.</li>
+    <li><strong>Recap:</strong> Gmail draft to attendees: decisions, owners, dates. Human reviews and sends — the recap is a relationship artifact, keep a person on it.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+Extract a CRM record from this call transcript for {{TONE_CARD}}.
+Transcript: <b>{{transcript}}</b>
+
+Return JSON only:
+{
+ "deal_stage_signal": "discovery | evaluating | negotiating | closing | at_risk",
+ "budget_mentioned": "amount or null — only if explicitly said",
+ "timeline": "only if explicitly said",
+ "objections": ["verbatim-ish, not paraphrased into mush"],
+ "action_items": [{"task": "", "owner": "", "due": ""}],
+ "recap_email": "to attendees: thanks, decisions made, action items
+   with owners and dates, next meeting. Under 150 words."
+}
+Rule: null beats guessed. A wrong close date is worse than none.
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> the agent proposes stage changes; a human confirms moves past "evaluating" — pipeline reviews depend on stages meaning something. Store the transcript link on the record for audit.</p>
+</div>
+
+<!-- ============ 6 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 06</p><span class="roi">~4 hrs/deal · same-day proposals</span></div>
+  <h2>Proposal generator</h2>
+  <p class="stack">make · claude api · google docs · your pricing sheet</p>
+  <p><strong>What it does:</strong> turns discovery-call notes into a complete draft proposal — scoped, priced from your actual rate card, in your voice — within an hour of the call ending. Same-day proposals close more not because they're better, but because they arrive while the problem is still loud in the buyer's head.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Assets:</strong> one great proposal as a Google Docs template with merge fields; your pricing rules in a sheet ("website build: $X–$Y depending on Z").</li>
+    <li><strong>Trigger:</strong> deal stage → "proposal" in CRM, or a manual "generate" button (a Slack shortcut works).</li>
+    <li><strong>Claude call:</strong> notes + template + pricing rules → filled sections and a price with reasoning.</li>
+    <li><strong>Assemble:</strong> merge into the Doc template, drop in a "DRAFT — review pricing" banner.</li>
+    <li><strong>Gate:</strong> Slack ping to the founder with the doc link and the agent's pricing rationale. Human tweaks, approves, sends.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You draft proposals for {{TONE_CARD}}.
+
+Discovery notes: <b>{{call_notes}}</b>
+Pricing rules: <b>{{rate_card}}</b>
+Template sections to fill: situation, proposed approach, scope
+(in/out), timeline, investment, next step.
+
+Rules:
+- Scope ONLY what the notes support. Unclear → put it in
+  "assumptions to confirm", never in promises.
+- Price from the rules; show your arithmetic in a comment block
+  the human will delete.
+- "Out of scope" list is mandatory — it prevents the scope creep
+  that kills service margins.
+- Mirror the client's own words for their problem in the situation
+  section. They should feel heard, not templated.
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> pricing is <em>always</em> human-approved — this gate never comes off. The agent drafts commitments; only an owner makes them.</p>
+</div>
+
+<!-- ============ 7 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 07</p><span class="roi">~2 hrs/client + zero dropped balls</span></div>
+  <h2>Client onboarding autopilot</h2>
+  <p class="stack">make · claude api · gmail · slack · drive · your pm tool</p>
+  <p><strong>What it does:</strong> the moment a contract is signed, the machinery fires: welcome email, kickoff scheduling, intake form (and polite chasing until it's filled), project folder and channel created, kickoff agenda drafted from the sales notes. First impressions get manufactured on time, every time.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Trigger:</strong> contract signed (PandaDoc/DocuSign webhook) or deal → "won".</li>
+    <li><strong>Scaffold:</strong> create Drive folder from template, Slack channel or shared thread, PM board from your delivery template.</li>
+    <li><strong>Welcome email:</strong> Claude personalizes your welcome template with sales-call context — what they bought and why, restated in one warm paragraph.</li>
+    <li><strong>Intake chase:</strong> form not filled after 2, 5, 8 days → escalating friendly bumps ("we can't start the fun part without it").</li>
+    <li><strong>Kickoff agenda:</strong> drafted from sales notes, dropped in the folder, attached to the invite.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+New client for {{TONE_CARD}}. Personalize onboarding.
+
+Sales context: <b>{{crm_notes_and_proposal_summary}}</b>
+Welcome template: {{welcome_template}}
+
+Produce:
+1. welcome_email — the template personalized with: what they
+   bought, the outcome they told us they want (their words),
+   the two things happening next with dates. Warm, not gushing.
+2. kickoff_agenda — 30 min: goals confirm (10), working style +
+   comms (10), first-milestone walkthrough (10). Seed each item
+   with specifics from the sales context.
+3. intake_bump_1 / _2 / _3 — escalating in persistence, never
+   in guilt. Bump 3 offers a 10-min call to fill it together.
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> if any scaffold step fails (folder, channel, board), alert a human immediately — a client noticing broken onboarding is the exact opposite of the impression this buys. Send the welcome from a real person's address, not hello@.</p>
+</div>
+
+<!-- ============ 8 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 08</p><span class="roi">reviews on autopilot · compounds forever</span></div>
+  <h2>Review &amp; testimonial collector</h2>
+  <p class="stack">make · claude api · gmail · google reviews/g2/clutch</p>
+  <p><strong>What it does:</strong> catches clients at their happiest moment — project shipped, big win, glowing email — and asks for the review right then, with a personalized note that makes saying yes easy. Social proof is the asset that sells for you while you sleep; this builds it without you remembering to ask.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Triggers (any):</strong> project marked complete; NPS ≥ 9; or — the clever one — Claude watching your inbox flags an unprompted praise email.</li>
+    <li><strong>Cool-down check:</strong> skip if asked in the last 6 months or if there's an open support issue.</li>
+    <li><strong>Claude call:</strong> personalized ask referencing the specific win, with a one-click link to your priority platform (rotate: Google → Clutch → G2).</li>
+    <li><strong>Praise-mining path:</strong> when the trigger was a praise email, the draft asks permission to quote it — "you said it better than we could."</li>
+    <li><strong>Log + reuse:</strong> testimonials land in a sheet; the best line each month gets flagged for your site.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You collect reviews for {{TONE_CARD}}.
+
+Trigger: <b>{{trigger_type}}</b> — context: <b>{{project_or_email_context}}</b>
+Client: {{name}}, relationship: {{summary}}
+Ask for a review on: {{platform_link}}
+
+Write a 3-sentence ask:
+1. Reference the SPECIFIC win — their metric, their launch,
+   their words. Generic asks get ignored.
+2. One link, one ask. Mention it takes 2 minutes.
+3. If trigger was a praise email: ask permission to quote them
+   instead, and offer to draft it from their own words.
+No groveling. We did good work; the ask is proud, not needy.
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> never incentivize reviews (platform ToS violation, and it reads that way too). Hard cap: one ask per client per 6 months. Approval gate optional here — worst case is mild awkwardness, so this is a good first blueprint to run fully hands-off.</p>
+</div>
+
+<!-- ============ 9 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 09</p><span class="roi">~4 hrs/week · consistent presence</span></div>
+  <h2>Content repurposer</h2>
+  <p class="stack">make · claude api · notion/docs · buffer/linkedin</p>
+  <p><strong>What it does:</strong> takes the one piece of real thinking you produce each week — a client email, a Loom, a project retro, a rant in Slack — and turns it into a LinkedIn post, a newsletter section, and two short posts, all in your voice, queued for approval. Consistency without the content-hamster-wheel misery.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Voice guide:</strong> paste your 5 best-performing posts into a doc. This is the style reference — better than any description of your voice.</li>
+    <li><strong>Trigger:</strong> drop source material into a Notion database or a #content-fodder Slack channel; new item fires the scenario.</li>
+    <li><strong>Claude call:</strong> source + voice guide → the format bundle below.</li>
+    <li><strong>Queue:</strong> drafts land in Buffer/your scheduler as unpublished. Sunday: 15 minutes of review, edit, approve the week.</li>
+    <li><strong>Feedback loop:</strong> monthly, add your best-performing new post to the voice guide. The system gets more you over time.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You repurpose content for {{TONE_CARD}}.
+
+Voice reference (my actual best posts): <b>{{voice_guide}}</b>
+Source material: <b>{{raw_material}}</b>
+
+Produce:
+1. linkedin_post — one idea from the source, concrete story or
+   example first, insight second. 150–250 words. Line breaks for
+   scanning. NO "I'm humbled", no engagement-bait question unless
+   the voice guide does that.
+2. newsletter_section — 100 words, same idea, more casual.
+3. short_posts — two, under 280 chars each, standalone.
+Rule: if the source material has no real insight, say so and
+stop. Publishing filler damages the brand more than silence.
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> nothing auto-publishes — the Sunday approval pass is permanent. Strip client names and numbers from anything client-derived unless you have explicit permission.</p>
+</div>
+
+<!-- ============ 10 ============ -->
+<div class="bp">
+  <div class="bp-head"><p class="kicker">Blueprint 10</p><span class="roi">one saved client pays for everything</span></div>
+  <h2>Churn-risk radar</h2>
+  <p class="stack">make · claude api · gmail · stripe · your pm tool · slack</p>
+  <p><strong>What it does:</strong> every Friday, scores each active client on quiet warning signs — reply times stretching, meetings declined, payments slowing, scope disputes, sentiment cooling — and gives you a ranked risk list with a suggested save play for the top of it. Churn never surprises the data; it only surprises the founder.</p>
+  <h3>Build steps</h3>
+  <ol>
+    <li><strong>Gather (per client, weekly):</strong> days since last reply, email sentiment (last 5 threads), invoice payment lag trend, meetings kept vs. moved, PM-tool activity.</li>
+    <li><strong>Claude call:</strong> the bundle → score + reasoning + suggested action.</li>
+    <li><strong>Deliver:</strong> Friday Slack digest — clients ranked by risk, top 3 with the why and the play.</li>
+    <li><strong>Act:</strong> the save play is always human-executed. A retention call from a bot is churn fuel; the radar finds the fire, you carry the water.</li>
+    <li><strong>Log:</strong> track scores over time — the <em>trend</em> is the signal; a stable 6 beats a fresh 4-to-7 jump.</li>
+  </ol>
+  <h3>The prompt</h3>
+<pre>
+You are the client-health analyst for {{TONE_CARD}}.
+
+Per-client signals this week (JSON): <b>{{signals_bundle}}</b>
+Last week's scores: {{previous_scores}}
+
+For each client return:
+{
+ "risk": 1-10,
+ "trend": "improving | stable | deteriorating",
+ "evidence": ["specific: 'reply time 2d → 6d over 3 weeks',
+   not 'seems disengaged'"],
+ "save_play": "one concrete human action for the account owner —
+   a call with a specific agenda, a value recap, a scope reset.
+   Only for risk ≥ 6."
+}
+Rules: evidence must come from the signals, not vibes. Flag data
+gaps as gaps. Do not inflate risk to seem useful — a quiet week
+is allowed to be a quiet week.
+</pre>
+  <p class="guard"><strong>Guardrails:</strong> this list is radioactive — it's your candid read on every client relationship. Lock the log sheet down, and never let radar language ("at-risk", scores) leak into client-facing channels or CRM fields clients might see in a screen-share.</p>
+</div>
+
+<hr>
+
+<h2>Rollout order</h2>
+<table>
+  <tr><th>Weeks</th><th>Deploy</th><th>Why this order</th></tr>
+  <tr><td>1–2</td><td>01 Lead responder</td><td>Revenue first; fastest visible payback buys your own buy-in.</td></tr>
+  <tr><td>3–4</td><td>02 Invoice chaser</td><td>Cash flow second. The two together usually fund everything else.</td></tr>
+  <tr><td>5–6</td><td>04 Inbox triage</td><td>Biggest hour-count; do it once the platform feels familiar.</td></tr>
+  <tr><td>7–8</td><td>03 Reports + 08 Reviews</td><td>Low-risk, high-delight. Good first fully-hands-off candidates.</td></tr>
+  <tr><td>9+</td><td>05, 06, 07, 09, 10</td><td>In whatever order matches your bottleneck.</td></tr>
+</table>
+
+<p style="margin-top:32px">Questions, stuck scenarios, or a blueprint you wish existed? Email <a href="mailto:hello@quietloop.co">hello@quietloop.co</a> — playbook buyers get answers.</p>
+<p class="kicker" style="margin-top:40px">© 2026 Quietloop · Single-business license: deploy for your own company freely. To deploy for clients, that's the studio's job — or ask about the agency license.</p>
+
+</div>
+</body>
+</html>
