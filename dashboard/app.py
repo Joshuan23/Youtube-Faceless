@@ -109,7 +109,7 @@ def index():
 @app.route("/generate", methods=["POST"])
 def generate():
     topic = request.form.get("topic", "").strip()
-    niche = request.form.get("niche", "personal_finance")
+    niche = request.form.get("niche", "nursery_rhymes")
     mode  = request.form.get("mode", "speed")  # speed | full | dry_run
 
     if not topic:
@@ -160,7 +160,7 @@ def api_retry(video_id):
     if not video:
         return jsonify({"ok": False, "error": "Video not found"}), 404
     topic = video.get("topic") or ""
-    niche = video.get("niche") or "personal_finance"
+    niche = video.get("niche") or "nursery_rhymes"
     if not topic:
         return jsonify({"ok": False, "error": "No topic saved for this video"}), 400
     if _jobs.get(video_id) == "running":
@@ -207,7 +207,7 @@ def api_upload(video_id):
                 p._do_upload(video_id)
             else:
                 topic = video.get("topic") or ""
-                niche = video.get("niche") or "personal_finance"
+                niche = video.get("niche") or "nursery_rhymes"
                 p.run_topic(topic, niche, video_id=video_id)
             _jobs[video_id] = "done"
         except Exception as e:
@@ -232,7 +232,7 @@ def api_run_all():
         if _jobs.get(vid_id) == "running":
             continue
         topic = video.get("topic") or ""
-        niche = video.get("niche") or "personal_finance"
+        niche = video.get("niche") or "nursery_rhymes"
         if not topic:
             continue
         _jobs[vid_id] = "running"

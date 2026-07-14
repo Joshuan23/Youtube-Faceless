@@ -17,65 +17,72 @@ def _load_config():
 
 
 SYSTEM_PROMPT = """\
-You are a world-class YouTube scriptwriter for faceless educational channels.
-Write hooks that stop the scroll, deliver dense value, and always end with a subscribe CTA.
-Use "you" and "we" — never "I". Speak to the viewer's desire for transformation.
+You are a beloved children's songwriter who writes original nursery rhymes and
+sing-along songs for toddlers and preschoolers (ages 1-5).
+Write gentle, cheerful, repetitive lyrics with a clear singable rhythm and simple
+rhymes a small child can echo. Keep every word wholesome, positive, and age-appropriate.
+Never include anything scary, violent, romantic, commercial, or unsafe.
+Do not address parents or ask anyone to subscribe inside the lyrics — just the song.
 """
 
 # Call 1: metadata only — small JSON, no long text fields (avoids newline-in-JSON bug)
 META_PROMPT = """\
-Topic: "{topic}" | Niche: {niche} | Target: {target_length} min
+Nursery rhyme: "{topic}" | Style: {niche} | Target: {target_length} min
 
 Return ONLY this JSON (no extra text, no markdown fences):
 {{"title":"...","hook_line":"...","key_takeaways":["...","...","..."],"section_names":["{s1}","{s2}","{s3}","{s4}"],"estimated_duration_min":{target_length}}}
+
+"title" = a fun, searchable kids-video title (e.g. "Twinkle Twinkle Little Star | Nursery Rhymes for Babies").
+"hook_line" = one cheerful line describing the song.
+"key_takeaways" = 3 friendly learning moments for little ones (e.g. "counting to five", "animal sounds").
 """
 
-# Call 2: full script as plain text — no JSON at all
+# Call 2: full lyrics as plain text — no JSON at all
 SCRIPT_PROMPT = """\
-Write a complete word-for-word YouTube script for a faceless {niche} channel.
+Write the complete sing-along lyrics for an original children's nursery rhyme.
 
-Topic: "{topic}"
-Target: {target_length} minutes (~{target_words} words)
+Song theme: "{topic}"
+Target: about {target_length} minutes when sung slowly (~{target_words} words with repeated choruses)
 
 Use this exact structure with these headers on their own lines:
 
-[HOOK]
 [INTRO]
 [{s1}]
 [{s2}]
 [{s3}]
 [{s4}]
-[RECAP & CTA]
+[OUTRO]
 
-Write the full script now. Plain text only — no JSON, no markdown.
+Guidelines:
+- Simple, repetitive, rhyming lines a toddler can sing along to.
+- Repeat the main chorus/verse so it fills the target length.
+- Warm, playful, and easy to follow. No narration — just the song words.
+
+Write the full lyrics now. Plain text only — no JSON, no markdown.
 """
 
 SECTION_TEMPLATES: dict[str, list[str]] = {
-    "personal_finance": [
-        "The Problem Nobody Talks About",
-        "The Strategy That Actually Works",
-        "Step-by-Step Implementation",
-        "Common Mistakes to Avoid",
+    "nursery_rhymes": [
+        "Verse 1",
+        "Chorus",
+        "Verse 2",
+        "Final Chorus",
     ],
-    "ai_tech": [
-        "Why This Changes Everything",
-        "How It Actually Works",
-        "Practical Use Cases",
-        "What Comes Next",
+    "lullabies": [
+        "Gentle Opening",
+        "Soothing Verse",
+        "Soft Chorus",
+        "Drifting to Sleep",
     ],
-    "business": [
-        "The Opportunity Nobody Sees",
-        "The Blueprint",
-        "Getting Your First Win",
-        "Scaling Up",
-    ],
-    "health": [
-        "The Science Behind It",
-        "What Most People Get Wrong",
-        "The Protocol That Works",
-        "Sustainable Long-Term Habits",
+    "learning_songs": [
+        "Let's Begin",
+        "Learn Along Verse",
+        "Sing It Again",
+        "We Did It!",
     ],
 }
+
+DEFAULT_NICHE = "nursery_rhymes"
 
 
 class ScriptGenerator:
@@ -83,10 +90,12 @@ class ScriptGenerator:
         self.config = _load_config()
 
     def _params(self, niche: str):
-        niche_cfg = self.config["niches"].get(niche, self.config["niches"]["personal_finance"])
+        niches = self.config["niches"]
+        niche_cfg = niches.get(niche) or next(iter(niches.values()))
         target_length = niche_cfg["optimal_video_length_min"]
-        target_words  = int(target_length * 140)
-        sections      = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["personal_finance"])
+        # ~90 sung words per minute (slower than spoken narration)
+        target_words  = int(target_length * 90)
+        sections      = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES[DEFAULT_NICHE])
         return target_length, target_words, sections
 
     def generate_meta(self, topic: str, niche: str) -> dict:
@@ -136,15 +145,16 @@ class ScriptGenerator:
         return self.build_result(meta, full_script, topic, niche)
 
     def generate_speed(self, topic: str, niche: str) -> dict:
-        """Single fast LLM call — 90-sec video, instant model. ~3s total."""
+        """Single fast LLM call — short nursery rhyme, instant model. ~3s total."""
         prompt = (
-            f'Write a 90-second faceless YouTube script (~210 words) for the {niche} niche.\n'
-            f'Topic: "{topic}"\n\n'
-            f'First line must be: TITLE: [title under 70 chars]\n\n'
-            f'[HOOK] 15-sec shocking opener\n'
-            f'[MAIN] 60 sec of 2-3 punchy key points\n'
-            f'[CTA] 15-sec subscribe ask\n\n'
-            f'Plain text only. Be direct and punchy.'
+            f'Write a short original children\'s nursery rhyme for toddlers.\n'
+            f'Song theme: "{topic}"\n\n'
+            f'First line must be: TITLE: [fun kids-video title under 70 chars]\n\n'
+            f'[VERSE] a simple rhyming verse\n'
+            f'[CHORUS] a catchy repeating chorus\n'
+            f'[VERSE] a second verse\n'
+            f'[CHORUS] repeat the chorus\n\n'
+            f'Sweet, repetitive, singable, and wholesome. Plain text only.'
         )
         raw = chat_fast(SYSTEM_PROMPT, prompt, max_tokens=400)
         lines = raw.strip().splitlines()
@@ -155,7 +165,7 @@ class ScriptGenerator:
         return {
             "topic": topic, "niche": niche, "title": title,
             "hook_line": "", "key_takeaways": [],
-            "estimated_duration_min": 4,
+            "estimated_duration_min": 2,
             "word_count": len(raw.split()),
             "sections": [], "full_script": raw,
         }

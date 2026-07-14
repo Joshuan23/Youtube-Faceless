@@ -22,77 +22,64 @@ def _config():
 
 
 SEED_TOPICS: dict[str, list[str]] = {
-    "personal_finance": [
-        "how to save $1000 fast",
-        "investing with $100",
-        "passive income ideas 2025",
-        "budgeting for beginners",
-        "how to pay off debt quickly",
-        "best index funds",
-        "how to build an emergency fund",
-        "credit score secrets banks hide",
-        "7 money habits of millionaires",
-        "how to negotiate your salary",
-        "compound interest explained",
-        "roth ira vs 401k",
-        "how to start investing at 20",
-        "real estate investing with no money",
-        "living below your means",
-        "money mistakes to avoid in your 30s",
-        "how to make $500 a week online",
-        "dividend investing for beginners",
-        "tax saving strategies",
-        "financial freedom at 40",
+    "nursery_rhymes": [
+        "Twinkle Twinkle Little Star",
+        "The Wheels on the Bus",
+        "Old MacDonald Had a Farm",
+        "Baby Shark dance song",
+        "Row Row Row Your Boat",
+        "Five Little Ducks went out one day",
+        "If You're Happy and You Know It",
+        "Head Shoulders Knees and Toes",
+        "The Itsy Bitsy Spider",
+        "Rain Rain Go Away",
+        "Five Little Monkeys jumping on the bed",
+        "Mary Had a Little Lamb",
+        "Hickory Dickory Dock",
+        "Humpty Dumpty sat on a wall",
+        "This Little Piggy went to market",
+        "Ring Around the Rosie",
+        "Little Bo Peep",
+        "Jack and Jill went up the hill",
+        "The Farmer in the Dell",
+        "Bingo the dog song",
     ],
-    "ai_tech": [
-        "AI tools replacing jobs in 2025",
-        "10 ChatGPT prompts for productivity",
-        "make $500/day with AI",
-        "AI vs human creativity",
-        "best free AI tools",
-        "Claude vs ChatGPT vs Gemini",
-        "AI images: making money with Midjourney",
-        "automation with AI",
-        "AI side hustle ideas",
-        "future jobs AI cannot replace",
+    "lullabies": [
+        "Hush Little Baby lullaby",
+        "Rock-a-bye Baby bedtime song",
+        "Twinkle Twinkle sleepy version",
+        "gentle counting sheep lullaby",
+        "Brahms Lullaby for babies",
+        "goodnight moon bedtime song",
+        "soft rainfall sleepy song",
+        "sweet dreams little one lullaby",
+        "starlight bedtime lullaby",
+        "cozy blanket sleepy song",
     ],
-    "business": [
-        "how to start a business with $0",
-        "most profitable online businesses",
-        "dropshipping in 2025",
-        "affiliate marketing for beginners",
-        "how to scale to 6 figures",
-        "business ideas with low startup cost",
-        "freelancing secrets",
-        "how to build a personal brand",
-        "digital products that sell",
-        "Shopify store launch guide",
-    ],
-    "health": [
-        "morning routine that changed my life",
-        "habits of the healthiest people",
-        "foods that fight inflammation",
-        "how to sleep better",
-        "intermittent fasting results",
-        "mental health daily habits",
-        "exercise with no equipment",
-        "longevity secrets from blue zones",
-        "stress reduction techniques",
-        "gut health transformation",
+    "learning_songs": [
+        "ABC Alphabet Song for kids",
+        "Counting 1 to 10 song",
+        "Colors of the Rainbow song",
+        "Days of the Week song",
+        "Shapes song for toddlers",
+        "animal sounds learning song",
+        "numbers 1 to 20 counting song",
+        "please and thank you manners song",
+        "brushing teeth song for toddlers",
+        "clean up tidy time song",
     ],
 }
 
 
 def get_trending_topics(niche: str, count: int = 5) -> list[str]:
     """
-    Returns a list of video topic ideas for the given niche.
-    Tries Google Trends via pytrends; falls back to Claude-generated ideas,
-    then the local seed list.
+    Returns a list of nursery-rhyme/song ideas for the given style.
+    Tries an LLM for fresh ideas; falls back to the local seed list.
     """
     topics = _claude_topic_ideas(niche, count)
     if topics:
         return topics
-    seed = SEED_TOPICS.get(niche, SEED_TOPICS["personal_finance"])
+    seed = list(SEED_TOPICS.get(niche) or next(iter(SEED_TOPICS.values())))
     random.shuffle(seed)
     return seed[:count]
 
@@ -101,17 +88,14 @@ def _claude_topic_ideas(niche: str, count: int) -> list[str]:
     if active_provider() == "none":
         return []
     try:
-        today = datetime.utcnow().strftime("%B %Y")
         raw = chat(
-            "You are a YouTube growth strategist. Return only valid JSON.",
+            "You brainstorm ideas for a children's nursery rhyme YouTube channel. Return only valid JSON.",
             (
-                f"Today is {today}.\n\n"
-                f"Generate {count} high-potential YouTube video topic ideas for the '{niche}' niche.\n"
+                f"Suggest {count} sing-along song ideas for a kids '{niche}' channel (ages 1-5).\n"
                 "Requirements:\n"
-                "- Each topic must be a punchy, searchable title under 70 characters\n"
-                "- Mix evergreen + trending angles\n"
-                "- Focus on high click-through-rate hooks\n"
-                "- Include numbers where natural (e.g. '7 ways...')\n\n"
+                "- Each idea is a short, friendly, searchable song title\n"
+                "- Mix beloved classics with fresh, wholesome themes (animals, colors, counting, bedtime)\n"
+                "- Absolutely nothing scary, violent, or inappropriate for toddlers\n\n"
                 "Return ONLY a JSON array of strings, no explanation."
             ),
             max_tokens=512,

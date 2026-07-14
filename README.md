@@ -1,23 +1,40 @@
-# WealthFlow – Faceless YouTube Channel Automation
+# Twinkle Tots – Faceless Nursery Rhyme Channel Automation
 
-Automated pipeline to produce, SEO-optimize, and upload faceless YouTube videos targeting **$10,000/month** in AdSense revenue.
+Automated pipeline to write, voice, and upload **faceless nursery rhyme videos for kids** —
+100% AI-generated, wholesome, and YouTube "Made for Kids" compliant.
 
 ## How It Works
 
 ```
-Topic Discovery → Script (Claude AI) → Voiceover (ElevenLabs) → Video Assembly (MoviePy)
-    → Thumbnail (Pillow) → SEO Metadata (Claude AI) → YouTube Upload → Analytics
+Song idea → Lyrics (AI) → Kid-friendly voice (edge-tts) → Colorful video (ffmpeg)
+    → Bright thumbnail (Pillow) → Kid-safe SEO → YouTube Upload (Made for Kids ✓)
 ```
 
-## Revenue Path to $10k/Month
+Everything is faceless: no camera, no narrator on screen — just cheerful sing-along
+songs with bright visuals that toddlers and preschoolers love.
 
-| Niche | Avg CPM | Views/Month Needed | Videos Needed |
-|-------|---------|-------------------|---------------|
-| Personal Finance | $18 | 555,000 | ~100 published |
-| AI / Tech | $12 | 833,000 | ~150 published |
-| Business | $15 | 667,000 | ~120 published |
+## Content Styles
 
-**Strategy:** Post 5 videos/week → 100 videos in 4 months → grow to $10k via compounding.
+| Style | Category | Example songs |
+|-------|----------|---------------|
+| `nursery_rhymes` | Film & Animation | Twinkle Twinkle, Wheels on the Bus, Old MacDonald |
+| `lullabies` | Music | Hush Little Baby, Rock-a-bye Baby, bedtime songs |
+| `learning_songs` | Education | ABC Song, Counting 1–10, Colors, Shapes |
+
+Set the default in `config.yaml` (`channel.niche`) or pick per-video in the dashboard.
+
+---
+
+## ⚠️ Kids Content Compliance (Important)
+
+This project uploads every video with **`selfDeclaredMadeForKids: true`** (controlled by
+`channel.made_for_kids` in `config.yaml`). This is **legally required** for children's
+content under COPPA / YouTube's "Made for Kids" rules.
+
+What this means for your channel:
+- Personalized ads, comments, and some features are disabled on kids videos (by design).
+- Keep every song, title, thumbnail, and description 100% wholesome and age-appropriate.
+- Do **not** flip `made_for_kids` to `false` for a genuine children's channel.
 
 ---
 
@@ -39,33 +56,36 @@ cp .env.example .env
 # Edit .env with your keys
 ```
 
-Required API keys:
-- **`ANTHROPIC_API_KEY`** – Claude AI for scripts & SEO ([get one](https://console.anthropic.com))
-- **`ELEVENLABS_API_KEY`** – Professional voiceover ([free tier available](https://elevenlabs.io))
-- **`PEXELS_API_KEY`** – Free stock footage ([get one](https://www.pexels.com/api))
-- **YouTube OAuth** – See setup below
+Recommended keys (all have free tiers):
+- **`GROQ_API_KEY`** – free LLM for writing lyrics ([console.groq.com](https://console.groq.com), no card)
+- **edge-tts** – free, natural kid-friendly voices (no key needed, installed via requirements)
+- **`PEXELS_API_KEY`** – optional colorful stock clips ([pexels.com/api](https://www.pexels.com/api))
+- **YouTube OAuth** – see setup below
+
+Optional upgrades: `ELEVENLABS_API_KEY` / `OPENAI_API_KEY` for premium voices.
 
 ### 3. YouTube OAuth Setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
 2. Create a project → Enable **YouTube Data API v3**
-3. Create OAuth 2.0 credentials → Download as `credentials/client_secrets.json`
-4. First run will open a browser for authorization
+3. Create OAuth 2.0 credentials
+4. Connect from the dashboard's **/youtube-auth** page (guided flow), or drop the
+   client secrets JSON into `credentials/client_secrets.json`
 
-### 4. Run Your First Video
+### 4. Make Your First Rhyme
 
 ```bash
-# Generate 1 video (dry run - script only, no render)
+# Just the lyrics (fast, no render, no upload)
 python main.py produce --dry-run
 
-# Generate + render + upload (full pipeline)
-python main.py produce --topic "7 passive income ideas that actually work"
+# Full pipeline for one song
+python main.py produce --topic "Twinkle Twinkle Little Star"
 
-# Batch produce 5 videos
-python main.py produce --count 5 --niche personal_finance
+# Batch produce 5 nursery rhymes
+python main.py produce --count 5 --niche nursery_rhymes
 
-# See trending topic ideas
-python main.py topics --niche personal_finance
+# See song ideas
+python main.py topics --niche nursery_rhymes
 ```
 
 ### 5. Start the Dashboard
@@ -78,8 +98,8 @@ python main.py dashboard
 ### 6. Enable Auto-Posting
 
 ```bash
-# Posts 1 video/day at 3 PM UTC automatically
-python main.py schedule --niche personal_finance
+# Posts 1 rhyme/day at the configured time automatically
+python main.py schedule --niche nursery_rhymes
 ```
 
 ---
@@ -88,13 +108,12 @@ python main.py schedule --niche personal_finance
 
 | Command | Description |
 |---------|-------------|
-| `python main.py produce` | Produce & upload a video |
-| `python main.py produce --count 5` | Batch produce 5 videos |
-| `python main.py produce --dry-run` | Script + SEO only |
-| `python main.py topics` | List trending topic ideas |
+| `python main.py produce` | Produce & upload a nursery rhyme video |
+| `python main.py produce --count 5` | Batch produce 5 songs |
+| `python main.py produce --dry-run` | Lyrics + SEO only |
+| `python main.py topics` | List song ideas |
 | `python main.py thumbnail "Title Here"` | Generate thumbnail variants |
 | `python main.py schedule` | Start auto-posting scheduler |
-| `python main.py analytics` | Show revenue stats & projection |
 | `python main.py status` | Show video pipeline status |
 | `python main.py dashboard` | Launch web dashboard |
 
@@ -103,10 +122,12 @@ python main.py schedule --niche personal_finance
 ## Configuration
 
 Edit `config.yaml` to customize:
-- **Niche** (`personal_finance`, `ai_tech`, `business`, `health`)
-- **Upload schedule** (`daily`, `5x_week`, `3x_week`)
-- **Video length target** (affects ad revenue — 12 min = mid-roll ads)
-- **Visual style** (colors, fonts, thumbnail design)
+- **Channel name / tagline** (`channel.name`, `channel.tagline`)
+- **Style** (`nursery_rhymes`, `lullabies`, `learning_songs`)
+- **Made for Kids flag** (`channel.made_for_kids` — keep `true`)
+- **Kid voice** (`tts.edge_voice`, e.g. `en-US-AnaNeural` child voice, or `en-US-JennyNeural`)
+- **Bright visuals** (colors under `video:` and `thumbnail:`)
+- **Upload schedule** (`videos_per_week`, `upload_time`)
 
 ---
 
@@ -115,31 +136,24 @@ Edit `config.yaml` to customize:
 ```
 Youtube-Faceless/
 ├── main.py                 # CLI entry point
-├── config.yaml             # Channel configuration
+├── config.yaml             # Channel configuration (Twinkle Tots)
 ├── requirements.txt
 ├── src/
 │   ├── pipeline.py         # Main orchestration
-│   ├── script_generator.py # Claude-powered scripts
-│   ├── voiceover.py        # ElevenLabs / OpenAI / gTTS
-│   ├── video_creator.py    # MoviePy video assembly
-│   ├── thumbnail.py        # Pillow thumbnail generation
-│   ├── seo.py              # SEO titles/descriptions/tags
-│   ├── uploader.py         # YouTube Data API v3
+│   ├── script_generator.py # AI nursery rhyme lyrics
+│   ├── voiceover.py        # edge-tts / ElevenLabs / OpenAI / gTTS
+│   ├── video_creator.py    # Video assembly
+│   ├── thumbnail.py        # Bright kid-friendly thumbnails
+│   ├── seo.py              # Kid-safe titles/descriptions/tags
+│   ├── uploader.py         # YouTube Data API v3 (Made for Kids ✓)
 │   ├── scheduler.py        # Content calendar
-│   ├── analytics.py        # Revenue tracking & projection
-│   ├── topics.py           # Trending topic discovery
+│   ├── topics.py           # Song idea discovery
 │   └── database.py         # SQLite data layer
-├── dashboard/
-│   ├── app.py              # Flask dashboard
-│   └── templates/index.html
+├── dashboard/              # Flask dashboard
 ├── output/                 # Generated content (gitignored)
-│   ├── scripts/
-│   ├── audio/
-│   ├── videos/
-│   └── thumbnails/
 ├── assets/
 │   ├── fonts/              # Drop .ttf fonts here
-│   └── music/              # Drop royalty-free .mp3 here
+│   └── music/              # Drop royalty-free kids .mp3 here
 └── credentials/            # YouTube OAuth (gitignored)
 ```
 
@@ -147,30 +161,27 @@ Youtube-Faceless/
 
 ## Adding Background Music
 
-Drop royalty-free MP3 files into `assets/music/`. The video creator will randomly select one per video. Good sources:
-- [YouTube Audio Library](https://studio.youtube.com/channel/*/music)
+Drop royalty-free, kid-friendly MP3 files into `assets/music/` (gentle instrumental /
+music-box tracks work great). One is picked at random per video. Good sources:
+- [YouTube Audio Library](https://studio.youtube.com/channel/*/music) (filter to Children's / Happy)
 - [Pixabay Music](https://pixabay.com/music/)
-- [Free Music Archive](https://freemusicarchive.org)
 
 ---
 
-## TTS Providers (in priority order)
+## Voice Options (edge-tts, free)
 
-1. **ElevenLabs** (best quality, ~$5/month for 30k chars) — set `ELEVENLABS_API_KEY`
-2. **OpenAI TTS** (good quality, ~$15/1M chars) — set `OPENAI_API_KEY`
-3. **gTTS** (free, robotic voice) — no key needed, auto-fallback
+Set `tts.edge_voice` in `config.yaml`:
+- `en-US-AnaNeural` – child-like, gentle (default)
+- `en-US-JennyNeural` – warm, friendly female
+- `en-GB-MaisieNeural` – British child voice
+- `en-US-AriaNeural` – bright, expressive
+
+For singing-quality vocals, use ElevenLabs (`ELEVENLABS_API_KEY` + `ELEVENLABS_VOICE_ID`).
 
 ---
 
-## Monetization Timeline
+## Note on Quality
 
-```
-Month 1-2:  Build catalog (40-80 videos) — $0-$100
-Month 3-4:  Reach 1,000 subs + 4k watch hours (monetization threshold)
-Month 5-6:  $500-$2,000/month
-Month 7-9:  $2,000-$5,000/month
-Month 10-12: $5,000-$10,000/month
-Year 2+:    $10,000-$30,000/month (compound growth)
-```
-
-Key levers: niche CPM × views × video count × CTR × watch time.
+AI text-to-speech reads/chants the rhymes rather than singing them melodically. For a
+polished channel, pair the generated lyrics + visuals with your own melody or a music
+tool. The pipeline gets you a complete, uploadable video end-to-end automatically.

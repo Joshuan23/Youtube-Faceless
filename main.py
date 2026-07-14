@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WealthFlow – Faceless YouTube Channel Automation
+Twinkle Tots – Faceless Nursery Rhyme Channel Automation
 Usage: python main.py --help
 """
 
@@ -31,7 +31,7 @@ Path("output").mkdir(exist_ok=True)
 
 @click.group()
 def cli():
-    """WealthFlow – Faceless YouTube Channel Automation"""
+    """Twinkle Tots – Faceless Nursery Rhyme Channel Automation"""
 
 
 # ── produce ─────────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ def cli():
 
 @cli.command()
 @click.option("--topic", "-t", default=None, help="Specific video topic")
-@click.option("--niche", "-n", default=None, help="Niche: personal_finance | ai_tech | business | health")
+@click.option("--niche", "-n", default=None, help="Style: nursery_rhymes | lullabies | learning_songs")
 @click.option("--count", "-c", default=1, show_default=True, help="Number of videos to produce")
 @click.option("--skip-upload", is_flag=True, help="Skip YouTube upload step")
 @click.option("--dry-run", is_flag=True, help="Script + SEO only (no TTS/video render)")
@@ -122,10 +122,10 @@ def dashboard(port):
 
 
 @cli.command()
-@click.option("--niche", "-n", default="personal_finance")
+@click.option("--niche", "-n", default="nursery_rhymes")
 @click.option("--count", "-c", default=10, show_default=True)
 def topics(niche, count):
-    """List trending topic ideas for a niche."""
+    """List nursery-rhyme/song ideas for a style."""
     from src.topics import get_trending_topics
 
     with console.status("Fetching topics…"):

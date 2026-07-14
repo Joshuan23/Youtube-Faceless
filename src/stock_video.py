@@ -12,10 +12,9 @@ PEXELS_KEY = os.getenv("PEXELS_API_KEY", "")
 PEXELS_API = "https://api.pexels.com/videos/search"
 
 _NICHE_KEYWORDS = {
-    "personal_finance": "money finance business",
-    "ai_tech": "technology computer data",
-    "business": "business office entrepreneur",
-    "health": "fitness health wellness",
+    "nursery_rhymes": "colorful animation kids cartoon",
+    "lullabies": "night sky stars calm",
+    "learning_songs": "colorful shapes cartoon kids",
 }
 
 
@@ -25,7 +24,9 @@ def _query(topic: str, niche: str = "") -> str:
             "and", "or", "with", "your", "you", "ways", "steps", "best"}
     words = [w for w in topic.split() if w not in stop]
     q = " ".join(words[:3])
-    return q or _NICHE_KEYWORDS.get(niche, "business success")
+    # Bias every query toward bright, kid-friendly, animated visuals
+    base = _NICHE_KEYWORDS.get(niche, "colorful cartoon kids")
+    return f"{q} cartoon".strip() if q else base
 
 
 def get_clips(topic: str, niche: str = "", count: int = 4,

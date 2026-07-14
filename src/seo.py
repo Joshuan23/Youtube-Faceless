@@ -8,28 +8,29 @@ from .llm import chat, parse_json
 logger = logging.getLogger(__name__)
 
 _NICHE_TAGS = {
-    "personal_finance": ["personal finance","money tips","how to save money","investing",
-        "financial freedom","passive income","budgeting","wealth building","make money",
-        "money management","financial advice","saving money","investment tips","rich mindset","money hacks"],
-    "ai_tech": ["artificial intelligence","AI tools","ChatGPT","AI tips","tech tips",
-        "AI for beginners","machine learning","AI productivity","future of AI",
-        "best AI tools","AI 2025","technology","AI tutorial","AI apps","automation"],
-    "business": ["how to start a business","entrepreneur","business tips","online business",
-        "make money online","business strategy","startup","side hustle","entrepreneurship",
-        "business growth","passive income","digital marketing","ecommerce","business ideas","success"],
-    "health": ["health tips","fitness","healthy lifestyle","wellness","nutrition",
-        "weight loss","mental health","exercise","diet tips","healthy habits",
-        "longevity","morning routine","self improvement","mindset","sleep tips"],
+    "nursery_rhymes": ["nursery rhymes","kids songs","nursery rhymes for babies",
+        "songs for children","baby songs","sing along","toddler songs","preschool songs",
+        "children songs","kids music","nursery rhymes for kids","rhymes for babies",
+        "kids sing along","fun songs for kids","learning songs for toddlers"],
+    "lullabies": ["lullaby","lullabies for babies","baby sleep music","bedtime songs",
+        "sleep music for babies","soothing songs","calm baby music","lullaby songs",
+        "bedtime lullaby","baby lullaby","sleepy time songs","nursery lullabies",
+        "songs to sleep","gentle music for kids","relaxing baby music"],
+    "learning_songs": ["learning songs","abc song","counting song","educational songs for kids",
+        "toddler learning","preschool learning","alphabet song","numbers song","colors song",
+        "songs for toddlers","kids educational videos","learn with songs","early learning",
+        "nursery learning songs","fun learning for kids"],
 }
 
 SYSTEM_PROMPT = """\
-You are a YouTube SEO specialist. You maximize organic discovery through:
-- Keyword-rich titles under 70 characters
-- Long-form descriptions (400-500 words) packed with LSI keywords
-- Strategic tag selection (15 tags, mix of broad + long-tail)
-- Chapter timestamps for watch time retention
+You are a YouTube specialist for a children's nursery rhyme channel (audience: parents
+choosing videos for toddlers). You maximize kid-friendly discovery through:
+- Cheerful, searchable titles under 70 characters (include "Nursery Rhymes" / "Kids Songs")
+- Warm, wholesome descriptions parents trust (300-400 words) with natural keywords
+- Simple, relevant tags (15, mix of broad + long-tail kids-song terms)
 
-Always prioritize click-through rate and search ranking simultaneously.
+Everything must be 100% wholesome and appropriate for young children.
+Never use clickbait, fear, or anything scary. No purchase or subscribe pressure.
 """
 
 
@@ -40,27 +41,26 @@ class SEOOptimizer:
         return SEO metadata.
         """
         topic = script_data.get("topic", "")
-        niche = script_data.get("niche", "personal_finance")
+        niche = script_data.get("niche", "nursery_rhymes")
         title = script_data.get("title", topic)
         takeaways = script_data.get("key_takeaways", [])
         sections = script_data.get("sections", [])
 
         prompt = f"""
-Optimize YouTube SEO metadata for this video.
+Create kid-friendly YouTube metadata for a children's nursery rhyme video.
 
 Current title: {title}
-Topic: {topic}
-Niche: {niche}
-Key takeaways: {json.dumps(takeaways)}
-Section names: {json.dumps([s.get("name", "") for s in sections])}
+Song theme: {topic}
+Style: {niche}
+Learning moments: {json.dumps(takeaways)}
+Song sections: {json.dumps([s.get("name", "") for s in sections])}
 
 Generate:
-1. A/B test 3 title variations (under 70 chars each)
-2. Full video description (400-500 words, includes keywords naturally,
-   has "In this video" intro, bullet points of what you'll learn,
-   ends with generic subscribe CTA and hashtags)
-3. 15 tags (mix: broad + niche + long-tail)
-4. Chapter timestamps (assume video starts at 0:00, first chapter at 0:00)
+1. 3 cheerful title variations (under 70 chars each, include "Nursery Rhymes" or "Kids Songs")
+2. A warm, wholesome description (300-400 words) parents trust: a friendly intro,
+   what little ones will enjoy/learn, gentle reminder that all content is made for kids,
+   ending with kid-song hashtags. No scary or clickbait language.
+3. 15 tags (mix: broad + long-tail children's-song terms)
 
 Return a JSON object:
 {{
@@ -68,11 +68,8 @@ Return a JSON object:
   "recommended_title": "...",
   "description": "...",
   "tags": ["...", ...],
-  "chapters": [
-    {{"time": "0:00", "label": "Introduction"}},
-    ...
-  ],
-  "hashtags": ["#Finance", ...]
+  "chapters": [],
+  "hashtags": ["#NurseryRhymes", "#KidsSongs", ...]
 }}
 """
         raw = chat(SYSTEM_PROMPT, prompt, max_tokens=2048)
@@ -83,21 +80,24 @@ Return a JSON object:
     def generate_speed(self, script_data: dict) -> dict:
         """Instant SEO — zero LLM calls, uses predefined keyword lists."""
         topic = script_data.get("topic", "")
-        niche = script_data.get("niche", "personal_finance")
+        niche = script_data.get("niche", "nursery_rhymes")
         title = script_data.get("title", topic)
-        tags  = _NICHE_TAGS.get(niche, _NICHE_TAGS["personal_finance"])
-        snippet = script_data.get("full_script", "")[:400].replace("\n", " ")
+        tags  = _NICHE_TAGS.get(niche) or next(iter(_NICHE_TAGS.values()))
+        style = niche.replace("_", " ")
         description = (
-            f"In this video, we cover {topic}.\n\n{snippet}...\n\n"
-            f"🔔 Subscribe for more {niche.replace('_', ' ')} tips!\n\n"
-            + " ".join(f"#{t.replace(' ','')}" for t in tags[:6])
+            f"🌟 Sing along to {topic}! 🌟\n\n"
+            f"Join Twinkle Tots for cheerful {style} that little ones love. "
+            f"Perfect for playtime, story time, and sing-along fun with the whole family.\n\n"
+            f"👶 This video is made for kids and completely wholesome.\n"
+            f"🎵 New nursery rhymes and songs added regularly!\n\n"
+            + " ".join(f"#{t.title().replace(' ','')}" for t in tags[:6])
         )
         return {
             "recommended_title": title,
             "description": description,
             "tags": tags,
             "chapters": [],
-            "hashtags": [f"#{t.replace(' ','')}" for t in tags[:6]],
+            "hashtags": [f"#{t.title().replace(' ','')}" for t in tags[:6]],
         }
 
     def build_full_description(self, seo: dict) -> str:

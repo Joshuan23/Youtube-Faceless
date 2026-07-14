@@ -116,7 +116,7 @@ class Pipeline:
             seo_data    = seo_opt.generate_speed(script_data)
         else:
             meta = script_gen.generate_meta(topic, niche)
-            section_names = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["personal_finance"])
+            section_names = SECTION_TEMPLATES.get(niche, SECTION_TEMPLATES["nursery_rhymes"])
             seo_input = {
                 "topic": topic, "niche": niche,
                 "title": meta.get("title", topic),
@@ -180,7 +180,7 @@ class Pipeline:
 
     def _step_thumbnail(self, video_id: int):
         video = self.db.get_video(video_id)
-        title = video.get("title") or video.get("topic") or "WealthFlow"
+        title = video.get("title") or video.get("topic") or "Twinkle Tots"
         topic = video.get("topic") or title
         slug  = _slugify(title)
         thumb_dir = OUTPUT_ROOT / "thumbnails"
@@ -199,8 +199,8 @@ class Pipeline:
         video = self.db.get_video(video_id)
         audio_path = video.get("audio_path") or ""
         thumb_path = video.get("thumb_path") or ""
-        title = video.get("title") or video.get("topic") or "WealthFlow"
-        niche = video.get("niche") or "personal_finance"
+        title = video.get("title") or video.get("topic") or "Twinkle Tots"
+        niche = video.get("niche") or "nursery_rhymes"
         topic = video.get("topic") or title
 
         if not audio_path or not Path(audio_path).exists():
@@ -291,7 +291,7 @@ class Pipeline:
         if thumb_path and Path(thumb_path).exists():
             img_args = ["-loop", "1", "-r", "1", "-i", thumb_path]
         else:
-            img_args = ["-f", "lavfi", "-i", "color=c=#0d1117:s=1280x720:r=1"]
+            img_args = ["-f", "lavfi", "-i", "color=c=#7EC8F3:s=1280x720:r=1"]
 
         cmd = (
             [ffmpeg, "-y"] + img_args +
@@ -329,7 +329,7 @@ class Pipeline:
             description=(video.get("description") or video.get("topic") or "")[:5000],
             tags=tags,
             thumbnail_path=video.get("thumb_path") or "",
-            niche=video.get("niche") or "personal_finance",
+            niche=video.get("niche") or "nursery_rhymes",
         )
         self.db.update_video(
             video_id,

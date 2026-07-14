@@ -11,7 +11,26 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-EDGE_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-GuyNeural")   # change in .env
+
+def _config_voice() -> str:
+    """Kid-friendly TTS voice: env override → config.yaml → gentle default."""
+    env = os.getenv("EDGE_TTS_VOICE")
+    if env:
+        return env
+    try:
+        import yaml
+        p = Path(__file__).parent.parent / "config.yaml"
+        with open(p) as f:
+            cfg = yaml.safe_load(f) or {}
+        voice = (cfg.get("tts") or {}).get("edge_voice")
+        if voice:
+            return voice
+    except Exception:
+        pass
+    return "en-US-AnaNeural"  # child-like, gentle — good for nursery rhymes
+
+
+EDGE_VOICE = _config_voice()
 
 
 class VoiceoverGenerator:

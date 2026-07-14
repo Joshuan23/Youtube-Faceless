@@ -1,6 +1,6 @@
-# Quickstart – Faceless YouTube Channel
+# Quickstart – Twinkle Tots (Faceless Nursery Rhyme Channel)
 
-**Completely free stack:** Groq (scripts) + edge-tts (voice) + MoviePy (video) + Pexels (footage)
+**Completely free stack:** Groq (lyrics) + edge-tts (kid voice) + ffmpeg (video) + Pexels (clips)
 
 ---
 
@@ -26,24 +26,24 @@ Test it:
 ```bash
 python start.py step1
 ```
-You'll see 10 topic ideas. Done.
+You'll see 10 nursery rhyme ideas. Done.
 
 > **Alternative:** Google Gemini is also free.
 > Get a key at https://aistudio.google.com/apikey → add `GEMINI_API_KEY=...` to `.env`
 
 ---
 
-## Step 2 – Write a script (free)
+## Step 2 – Write the lyrics (free)
 
 ```bash
 python start.py step2
 ```
 
-Groq (Llama 3.3 70B) writes a full 12-minute script + SEO metadata. Takes ~15 seconds.
+Groq (Llama 3.3 70B) writes an original nursery rhyme + kid-safe SEO metadata. Takes ~15 seconds.
 
 To use your own topic, edit line 22 in `start.py`:
 ```python
-TOPIC = "7 passive income ideas that actually work"
+TOPIC = "Twinkle Twinkle Little Star"
 ```
 
 ---
@@ -58,9 +58,9 @@ python start.py step3
 
 To change the voice, edit `.env`:
 ```
-EDGE_TTS_VOICE=en-US-GuyNeural      # male
-# EDGE_TTS_VOICE=en-US-JennyNeural  # female
-# EDGE_TTS_VOICE=en-GB-RyanNeural   # British male
+EDGE_TTS_VOICE=en-US-AnaNeural       # child voice (default)
+# EDGE_TTS_VOICE=en-US-JennyNeural   # warm female
+# EDGE_TTS_VOICE=en-GB-MaisieNeural  # British child
 ```
 
 > Want even better voice quality? Add `ELEVENLABS_API_KEY` to `.env`.
@@ -125,11 +125,11 @@ python start.py all
 python main.py schedule
 ```
 
-Picks a new trending topic and posts every day at 3 PM UTC.
+Picks a new song idea and posts every day at the configured time (default 4 PM).
 
 ---
 
-## Revenue dashboard (free)
+## Dashboard (free)
 
 ```bash
 python main.py dashboard
@@ -142,7 +142,7 @@ python main.py dashboard
 
 | Tool | Cost | What it does |
 |------|------|-------------|
-| Groq API | **Free** | Writes scripts with Llama 3.3 70B |
+| Groq API | **Free** | Writes lyrics with Llama 3.3 70B |
 | edge-tts | **Free** | Microsoft neural voice |
 | Pexels API | **Free** | Stock footage |
 | YouTube API | **Free** | Uploads videos |
@@ -156,8 +156,8 @@ python main.py dashboard
 
 | Upgrade | Cost | Benefit |
 |---------|------|---------|
-| ElevenLabs voice | $5/mo | More expressive voice |
-| Claude / GPT-4 | ~$0.10/video | Slightly better scripts |
+| ElevenLabs voice | $5/mo | Singing-quality voice |
+| Claude / GPT-4 | ~$0.10/video | Slightly better lyrics |
 | Pexels (already free) | $0 | — |
 
 You can run this channel indefinitely for free. Upgrade only when you're already making money.

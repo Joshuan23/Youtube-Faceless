@@ -7,6 +7,8 @@ import pickle
 import time
 from pathlib import Path
 
+import yaml
+
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -14,12 +16,34 @@ API_SERVICE = "youtube"
 API_VERSION = "v3"
 RESUMABLE_CHUNK = 1024 * 1024 * 50  # 50 MB
 
+# Default fallback categories per kids-content style
 CATEGORY_IDS = {
-    "personal_finance": "27",  # Education
-    "ai_tech": "28",           # Science & Technology
-    "business": "27",
-    "health": "26",            # Howto & Style
+    "nursery_rhymes": "1",   # Film & Animation
+    "lullabies": "10",       # Music
+    "learning_songs": "27",  # Education
 }
+
+
+def _load_config() -> dict:
+    try:
+        p = Path(__file__).parent.parent / "config.yaml"
+        with open(p) as f:
+            return yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+
+
+def _category_for(niche: str) -> str:
+    """Prefer the per-niche category from config.yaml, else the built-in map."""
+    cfg = _load_config()
+    niche_cfg = (cfg.get("niches") or {}).get(niche) or {}
+    return str(niche_cfg.get("youtube_category") or CATEGORY_IDS.get(niche, "1"))
+
+
+def _made_for_kids() -> bool:
+    """COPPA: children's content MUST be flagged as made for kids."""
+    cfg = _load_config()
+    return bool((cfg.get("channel") or {}).get("made_for_kids", True))
 
 
 class YouTubeUploader:
@@ -77,14 +101,14 @@ class YouTubeUploader:
         description: str,
         tags: list[str],
         thumbnail_path: str = None,
-        niche: str = "personal_finance",
+        niche: str = "nursery_rhymes",
         privacy: str = "public",
     ) -> dict:
         """Upload video to YouTube. Returns dict with youtube_id and youtube_url."""
         from googleapiclient.http import MediaFileUpload
 
         service = self._get_service()
-        category_id = CATEGORY_IDS.get(niche, "27")
+        category_id = _category_for(niche)
 
         body = {
             "snippet": {
@@ -97,7 +121,7 @@ class YouTubeUploader:
             },
             "status": {
                 "privacyStatus": privacy,
-                "selfDeclaredMadeForKids": False,
+                "selfDeclaredMadeForKids": _made_for_kids(),
             },
         }
 
@@ -139,13 +163,13 @@ class YouTubeUploader:
 
     def schedule_video(
         self, video_path: str, title: str, description: str, tags: list[str],
-        publish_at: str, thumbnail_path: str = None, niche: str = "personal_finance",
+        publish_at: str, thumbnail_path: str = None, niche: str = "nursery_rhymes",
     ) -> dict:
         """Upload as 'private', then schedule publish time (ISO 8601 UTC)."""
         from googleapiclient.http import MediaFileUpload
 
         service = self._get_service()
-        category_id = CATEGORY_IDS.get(niche, "27")
+        category_id = _category_for(niche)
 
         body = {
             "snippet": {
@@ -157,7 +181,7 @@ class YouTubeUploader:
             "status": {
                 "privacyStatus": "private",
                 "publishAt": publish_at,
-                "selfDeclaredMadeForKids": False,
+                "selfDeclaredMadeForKids": _made_for_kids(),
             },
         }
         media = MediaFileUpload(video_path, chunksize=RESUMABLE_CHUNK, resumable=True, mimetype="video/mp4")

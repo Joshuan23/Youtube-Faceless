@@ -55,7 +55,7 @@ def run_daily_pipeline(pipeline_fn, niche: str = None):
     """
     cfg = _config()
     upload_time_str = cfg["channel"].get("upload_time", "15:00")
-    niche = niche or cfg["channel"].get("niche", "personal_finance")
+    niche = niche or cfg["channel"].get("niche", "nursery_rhymes")
     schedule_key = cfg["channel"].get("upload_schedule", "5x_week")
     days = SCHEDULE_DAYS.get(schedule_key, SCHEDULE_DAYS["5x_week"])
     hour, minute = map(int, upload_time_str.split(":"))

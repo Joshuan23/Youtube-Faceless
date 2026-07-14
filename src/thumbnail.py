@@ -13,15 +13,16 @@ logger = logging.getLogger(__name__)
 FONTS_DIR = Path(__file__).parent.parent / "assets" / "fonts"
 OUTPUT_DIR = Path(__file__).parent.parent / "output" / "thumbnails"
 
+# Bright, cheerful kid-friendly gradients (light → slightly deeper same hue)
 GRADIENT_PRESETS = [
-    ("#0D1117", "#1a1a2e"),   # dark blue
-    ("#1a0a00", "#3d1c02"),   # dark orange
-    ("#000d1a", "#001a33"),   # navy
-    ("#0a0a0a", "#1a1a1a"),   # near black
-    ("#0d001a", "#1a0033"),   # dark purple
+    ("#8FD3FF", "#3FA9F5"),   # sky blue
+    ("#FFD3E8", "#FF7EB6"),   # bubblegum pink
+    ("#FFF3B0", "#FFD24C"),   # sunny yellow
+    ("#C8F7C5", "#5FD068"),   # meadow green
+    ("#E3D0FF", "#B292FF"),   # lavender
 ]
 
-ACCENT_COLORS = ["#FFD700", "#FF4444", "#00CFFF", "#FF6B35", "#39FF14"]
+ACCENT_COLORS = ["#FFEB3B", "#FF5FA2", "#FF7F27", "#4CD964", "#9C5CFF"]
 
 
 def _load_config():
@@ -102,10 +103,10 @@ class ThumbnailCreator:
             tw = bbox[2] - bbox[0]
             x = (w - tw) // 2 + 50  # slight right offset for visual weight
             y = y_start + i * 130
-            # Shadow
-            draw.text((x + shadow_offset, y + shadow_offset), line, font=title_font, fill="#000000")
-            # Main text
-            color = accent if i == 0 else "#FFFFFF"
+            # Shadow / outline for contrast on bright backgrounds
+            draw.text((x + shadow_offset, y + shadow_offset), line, font=title_font, fill="#0B2545")
+            # Main text — first line pops in accent, rest in deep navy for readability
+            color = accent if i == 0 else "#0B2545"
             draw.text((x, y), line, font=title_font, fill=color)
 
         # ── Stat / hook line ─────────────────────────────────────────────
@@ -116,13 +117,17 @@ class ThumbnailCreator:
             tw = bbox[2] - bbox[0]
             x = (w - tw) // 2 + 50
             y = y_start + len(lines) * 130 + 30
-            draw.text((x + 2, y + 2), hook, font=hook_font, fill="#000000")
-            draw.text((x, y), hook, font=hook_font, fill="#CCCCCC")
+            draw.text((x + 2, y + 2), hook, font=hook_font, fill="#FFFFFF")
+            draw.text((x, y), hook, font=hook_font, fill="#0B2545")
 
         # ── Brand label (bottom right) ────────────────────────────────
-        brand_font = _get_font(36, bold=True)
-        brand = self.config.get("brand", "WealthFlow")
-        draw.text((w - 220, h - 60), brand, font=brand_font, fill=accent)
+        brand_font = _get_font(40, bold=True)
+        brand = self.config.get("brand", "Twinkle Tots")
+        bb = draw.textbbox((0, 0), brand, font=brand_font)
+        bw = bb[2] - bb[0]
+        bx, by = w - bw - 40, h - 64
+        draw.text((bx + 2, by + 2), brand, font=brand_font, fill="#FFFFFF")
+        draw.text((bx, by), brand, font=brand_font, fill="#0B2545")
 
         img.save(output_path, "JPEG", quality=95)
         logger.info("Thumbnail saved: %s", output_path)

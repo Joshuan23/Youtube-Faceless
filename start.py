@@ -23,8 +23,8 @@ load_dotenv()
 # ─────────────────────────────────────────────
 #  CHANGE THESE to customize your channel
 # ─────────────────────────────────────────────
-NICHE  = "personal_finance"   # or: ai_tech | business | health
-TOPIC  = ""                   # leave blank to auto-pick a trending topic
+NICHE  = "nursery_rhymes"     # or: lullabies | learning_songs
+TOPIC  = ""                   # leave blank to auto-pick a song idea
 # ─────────────────────────────────────────────
 
 
@@ -70,7 +70,7 @@ def step2_write_script(topic: str = None):
         return
 
     print(f"  Topic: {topic}")
-    print("  Calling Claude to write a 12-minute script…")
+    print("  Writing an original nursery rhyme…")
 
     from src.script_generator import ScriptGenerator
     gen = ScriptGenerator()

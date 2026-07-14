@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WealthFlow – Dashboard</title>
+  <title>Twinkle Tots – Dashboard</title>
   <style>
     :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--gold:#ffd700;--green:#3fb950;--red:#f85149;--blue:#58a6ff;--text:#e6edf3;--muted:#8b949e}
     *{box-sizing:border-box;margin:0;padding:0}
@@ -81,7 +81,7 @@
 </head>
 <body>
 <header>
-  <h1>⚡ WealthFlow</h1>
+  <h1>🌟 Twinkle Tots</h1>
   {% if llm_provider == "groq" %}
     <span class="pill">Groq FREE</span>
   {% elif llm_provider == "gemini" %}
@@ -135,15 +135,14 @@
         <input type="text" name="topic" id="topic-input"
                placeholder="Topic (leave blank to auto-pick)"/>
         <select name="niche" id="niche-sel">
-          <option value="personal_finance">💰 Personal Finance</option>
-          <option value="ai_tech">🤖 AI &amp; Tech</option>
-          <option value="business">📈 Business</option>
-          <option value="health">🏃 Health</option>
+          <option value="nursery_rhymes">🎵 Nursery Rhymes</option>
+          <option value="lullabies">🌙 Lullabies</option>
+          <option value="learning_songs">🔤 Learning Songs</option>
         </select>
         <select name="mode" id="mode-sel">
-          <option value="speed" selected>⚡ Speed video (~60s + upload)</option>
-          <option value="full">🎬 Full video (~4 min)</option>
-          <option value="dry_run">📝 Script only (~15s, no upload)</option>
+          <option value="speed" selected>⚡ Quick rhyme (~60s + upload)</option>
+          <option value="full">🎬 Full song (~3 min)</option>
+          <option value="dry_run">📝 Lyrics only (~15s, no upload)</option>
         </select>
       </div>
       <div class="form-row">
@@ -151,7 +150,7 @@
         <button type="button" class="btn btn-outline" onclick="pickTopic()">🎲 Random Topic</button>
       </div>
       <div class="mode-hint" id="mode-hint">
-        Speed video: script → voice → stock footage video → YouTube upload. ~60 seconds total.
+        Quick rhyme: lyrics → kid voice → video → YouTube upload. ~60 seconds total.
       </div>
     </form>
 
@@ -277,22 +276,21 @@
 const modeSel  = document.getElementById('mode-sel');
 const modeHint = document.getElementById('mode-hint');
 const hints = {
-  speed:   '⚡ Speed video: script → voice → stock footage → YouTube upload. ~60 seconds total.',
-  full:    '🎬 Full video: high-quality longer video. Script → voice → video (~4 min total).',
-  dry_run: '📝 Script only: writes the script + SEO in ~15 seconds. No upload.',
+  speed:   '⚡ Quick rhyme: lyrics → kid voice → video → YouTube upload. ~60 seconds total.',
+  full:    '🎬 Full song: longer sing-along video. Lyrics → voice → video (~3 min total).',
+  dry_run: '📝 Lyrics only: writes the rhyme + SEO in ~15 seconds. No upload.',
 };
 modeSel.addEventListener('change', () => { modeHint.textContent = hints[modeSel.value]; });
 
 // ── Random topic ─────────────────────────────────────────────────────────
 const TOPICS = {
-  personal_finance: ['7 passive income ideas that actually work','How to save $1,000 fast','Investing with $100','Budgeting secrets banks hide','How to pay off debt in 12 months'],
-  ai_tech:          ['10 AI tools that will blow your mind','Make money with AI in 2025','ChatGPT prompts for productivity','AI vs humans: who wins?','Best free AI apps 2025'],
-  business:         ['Start a business with $0','Most profitable online businesses','How to make $10k a month','Dropshipping in 2025','Scale to 6 figures'],
-  health:           ['Morning routine that changed my life','Foods that fight aging','How to sleep better tonight','Intermittent fasting results','Habits of the healthiest people'],
+  nursery_rhymes: ['Twinkle Twinkle Little Star','The Wheels on the Bus','Old MacDonald Had a Farm','Five Little Ducks','The Itsy Bitsy Spider'],
+  lullabies:      ['Hush Little Baby','Rock-a-bye Baby','Twinkle Twinkle bedtime version','Counting sheep lullaby','Sweet dreams little one'],
+  learning_songs: ['ABC Alphabet Song','Counting 1 to 10 Song','Colors of the Rainbow','Days of the Week Song','Shapes Song for Toddlers'],
 };
 function pickTopic() {
   const niche = document.getElementById('niche-sel').value;
-  const list  = TOPICS[niche] || TOPICS.personal_finance;
+  const list  = TOPICS[niche] || TOPICS.nursery_rhymes;
   document.getElementById('topic-input').value = list[Math.floor(Math.random() * list.length)];
 }
 

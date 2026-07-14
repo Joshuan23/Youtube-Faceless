@@ -1,94 +1,89 @@
 channel:
-  name: "WealthFlow"
-  niche: "personal_finance"       # personal_finance | ai_tech | business | health
-  target_monthly_revenue: 10000   # USD
-  upload_time: "15:00"            # 3 PM local — peak YouTube traffic window
+  name: "Twinkle Tots"
+  tagline: "Sing-along nursery rhymes & lullabies for little ones"
+  niche: "nursery_rhymes"       # nursery_rhymes | lullabies | learning_songs
+  made_for_kids: true           # REQUIRED by COPPA/YouTube for children's content
+  upload_time: "16:00"          # 4 PM — after-school / pre-dinner kids viewing window
   videos_per_week: 5
 
 niches:
-  personal_finance:
-    avg_cpm: 18.0                 # USD per 1000 views
-    target_views_per_video: 50000
-    optimal_video_length_min: 12  # minutes  (enables mid-roll ads)
+  nursery_rhymes:
+    avg_cpm: 3.5                 # USD per 1000 views (kids content has low CPM but huge volume)
+    target_views_per_video: 500000
+    optimal_video_length_min: 3   # single rhyme; compilations run longer
+    youtube_category: "1"         # Film & Animation
     topics:
-      - "how to save money"
-      - "investing for beginners"
-      - "passive income ideas"
-      - "credit score tips"
-      - "budgeting strategies"
-      - "stock market basics"
-      - "real estate investing"
-      - "side hustles"
-      - "financial freedom"
-      - "debt payoff strategies"
+      - "Twinkle Twinkle Little Star"
+      - "Baby Shark Dance"
+      - "The Wheels on the Bus"
+      - "Old MacDonald Had a Farm"
+      - "Row Row Row Your Boat"
+      - "Five Little Ducks"
+      - "If You're Happy and You Know It"
+      - "Head Shoulders Knees and Toes"
+      - "The Itsy Bitsy Spider"
+      - "Rain Rain Go Away"
 
-  ai_tech:
-    avg_cpm: 12.0
-    target_views_per_video: 70000
-    optimal_video_length_min: 10
+  lullabies:
+    avg_cpm: 3.0
+    target_views_per_video: 300000
+    optimal_video_length_min: 5   # calmer, longer sleep songs
+    youtube_category: "10"        # Music
     topics:
-      - "AI tools that will blow your mind"
-      - "ChatGPT prompts"
-      - "make money with AI"
-      - "future of AI"
-      - "AI vs humans"
-      - "best AI apps 2025"
+      - "Hush Little Baby"
+      - "Rock-a-bye Baby"
+      - "Brahms Lullaby"
+      - "Twinkle Twinkle bedtime version"
+      - "Sleepy time counting sheep song"
 
-  business:
-    avg_cpm: 15.0
-    target_views_per_video: 55000
-    optimal_video_length_min: 12
+  learning_songs:
+    avg_cpm: 4.0
+    target_views_per_video: 400000
+    optimal_video_length_min: 3
+    youtube_category: "27"        # Education
     topics:
-      - "how to start a business"
-      - "entrepreneur success stories"
-      - "business mistakes to avoid"
-      - "scaling your business"
-      - "online business ideas"
-
-  health:
-    avg_cpm: 9.0
-    target_views_per_video: 80000
-    optimal_video_length_min: 10
-    topics:
-      - "morning routine habits"
-      - "longevity secrets"
-      - "mental health tips"
-      - "best exercises"
-      - "nutrition myths"
+      - "ABC Alphabet Song"
+      - "Counting 1 to 10 Song"
+      - "Colors Song for Kids"
+      - "Days of the Week Song"
+      - "Shapes Song for Toddlers"
 
 video:
   resolution: "1920x1080"
   fps: 30
-  background_color: "#0A0A0A"
+  background_color: "#7EC8F3"     # cheerful sky blue
   text_color: "#FFFFFF"
-  accent_color: "#FFD700"
-  font_size_title: 72
-  font_size_body: 48
-  fade_duration: 0.5            # seconds
-  background_music_volume: 0.08
+  accent_color: "#FF5FA2"         # bubblegum pink
+  font_size_title: 84
+  font_size_body: 52
+  fade_duration: 0.5              # seconds
+  background_music_volume: 0.10
 
 thumbnail:
   width: 1280
   height: 720
-  background_color: "#0D1117"
-  title_color: "#FFD700"
+  background_color: "#7EC8F3"
+  title_color: "#FFEB3B"          # sunny yellow
   subtitle_color: "#FFFFFF"
-  border_color: "#FFD700"
-  border_width: 8
+  border_color: "#FF5FA2"
+  border_width: 12
+  brand: "Twinkle Tots"
 
 seo:
   title_max_chars: 70
-  description_min_chars: 400
+  description_min_chars: 300
   max_tags: 15
-  chapters: true
+  chapters: false                 # single rhymes rarely need chapters
 
 tts:
-  provider: "elevenlabs"         # elevenlabs | openai | gtts
+  provider: "edge_tts"            # elevenlabs | edge_tts | openai | gtts
+  # Warm, friendly voice suited to reading/singing nursery rhymes to children.
+  edge_voice: "en-US-AnaNeural"   # child-like, gentle — great for rhymes
   speed: 1.0
   elevenlabs:
     model: "eleven_turbo_v2_5"
-    stability: 0.5
-    similarity_boost: 0.8
+    stability: 0.4
+    similarity_boost: 0.85
   openai:
     model: "tts-1-hd"
-    voice: "onyx"
+    voice: "shimmer"              # soft, higher-pitched, friendly
